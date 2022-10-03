@@ -14,9 +14,52 @@ from binance.client import Client
 
 class DataRetriever: 
     
+    ''' Class for retrieving historical data from Binanace for cryptocurrency coins.
+        For each coin it creates a separate folder in hist_data directory and stores there the downloaded data. 
+        Requires the binance public and secret API keys to be provided in credentials.py modul" 
+        
+        
+    Attributes
+    ============
+    folder: str
+        directory where the downloaded data are stored
+
+    #start: str
+        start date for data import
+    #end: str
+        end date for data import
+    
+    
+    Methods
+    =======
+    connect:
+        connects to binance server.
+        
+    test_strategy:
+        prepares the data and backtests the trading strategy incl. reporting (wrapper).
+        
+    get_all_tickers:
+        get all tradable tickers by binance .
+    
+    get_only_tickers_containing_symbol:
+        get all tradable tickers containing given symbol (USDT by default)
+        
+    create_ticker_folder:
+        used to create a separate folder for each ticker in "hist_data" dictionary
+        
+    store_df:
+        stores the downloaded historical data as ".csv" file in corresponding folder.
+        
+    get_ticker_historical_data:
+        download historical data for a given ticker.
+    
+    retrieve_all_historical_data:
+        download and store historical data for all tradable (filtered out) tickers.
+        
+    ''' 
     def __init__(self, folder="../hist_data"):
-        self.folder = "../hist_data"
-        print(self.folder)
+        self.folder = folder
+
     def connect(self): 
         self.client = Client(api_key = api_key, api_secret = secret_key, tld = "com")
         if len(self.client.ping()) == 0:
@@ -79,15 +122,40 @@ class DataRetriever:
         df.to_csv(path)                                       
         
     def get_ticker_historical_data(self, ticker):
-        print(f"Retrieving data for {ticker} with 1m interval..")
-        timestamp = self.client._get_earliest_valid_timestamp(symbol = ticker, interval = "1m")
-        start_t = pd.to_datetime(timestamp, unit = "ms") # earliest data available on Binance
-        print(f"Data for {ticker} are available from {start_t}..")
+        max_attempts = 12
+        attempt = 0
+        success = False
         #timestamp = "2022-01-03"
-        bars = self.client.get_historical_klines(symbol = ticker, interval = "1m", start_str = timestamp)
-        df = pd.DataFrame(bars)
-        return df                                   
-                                           
+        while True: 
+            try: 
+                print(f"Retrieving data for {ticker} with 1m interval..")
+                timestamp = self.client._get_earliest_valid_timestamp(symbol = ticker, interval = "1m")
+                start_t = pd.to_datetime(timestamp, unit = "ms") # earliest data available on Binance
+                print(f"Data for {ticker} are available from {start_t}..")
+                bars = self.client.get_historical_klines(symbol = ticker, interval = "1m", start_str = timestamp)
+                
+            except Exeption as e: 
+                print(f"Could not retrieve data for {ticker}..", end = " | ")
+                print(e)
+                print("Trying to reconnect to server..")
+                
+            else: 
+                df = pd.DataFrame(bars)
+                return df 
+            
+            finally: 
+                # wait 5 seconds before trying to reconnect
+                time.sleep(10)
+                attempt += 1
+                print(f"Attempt: {attempt}")
+                # Try to reconnect (assuming it was the connection error).
+                self.connect()
+                
+                # stop the programm if max attempts reached
+                if attempt >= max_attempts: 
+                    print(f"Programm stopped: max attempts reached..")
+                    exit(0)
+                                        
     def retrieve_all_historical_data(self):  
         total_start_t = time.time()
         for ticker in tqdm.tqdm(self.tickers): 
@@ -109,3 +177,13 @@ class DataRetriever:
                 
         total_end_t = time.time()
         print(f"Retrieving all ticker historical data took in total {(total_end_t - total_start_t)/60} mins..")
+        
+        
+if __name__ == "__main__":
+    dataRetriever = DataRetriever()
+    # connect client to binance server
+    dataRetriever.connect()
+    # get all available coins traidable with USDT (default)
+    dataRetriever.get_only_tickers_containing_symbol()
+    # get all historical data for available coins 
+    dataRetriever.retrieve_all_historical_data()

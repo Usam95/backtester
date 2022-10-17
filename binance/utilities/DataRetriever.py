@@ -113,8 +113,8 @@ class DataRetriever:
         df = df[["Date", "Open", "High", "Low", "Close", "Volume"]].copy()
         df.set_index("Date", inplace = True)
 
-        for column in df.columns:
-            df[column] = pd.to_numeric(df[column], errors = "coerce")
+        #for column in df.columns:
+        #    df[column] = pd.to_numeric(df[column], errors = "coerce")
 
         symbol = path.split("/")[-1]
         path = path + "/" + symbol + ".csv"
@@ -131,8 +131,10 @@ class DataRetriever:
                 print(f"Retrieving data for {ticker} with 1m interval..")
                 timestamp = self.client._get_earliest_valid_timestamp(symbol = ticker, interval = "1m")
                 start_t = pd.to_datetime(timestamp, unit = "ms") # earliest data available on Binance
+                #timestamp = "2022-10-08"
+                end_str = "2022-10-09"
                 print(f"Data for {ticker} are available from {start_t}..")
-                bars = self.client.get_historical_klines(symbol = ticker, interval = "1m", start_str = timestamp)
+                bars = self.client.get_historical_klines(symbol = ticker, interval = "1m", start_str = timestamp, end_str=end_str)
                 
             except Exeption as e: 
                 print(f"Could not retrieve data for {ticker}..", end = " | ")
@@ -165,8 +167,11 @@ class DataRetriever:
 
                 path = os.path.join(self.folder, ticker)
                 self.create_ticker_folder(ticker)
+                start = pd.to_datetime(df.iloc[0, 0], unit = "ms") 
+                end = pd.to_datetime(df.iloc[-1, 0], unit = "ms")
                 self.store_df(df, path)
-                self.remove_ticker_and_store_list(ticker)
+                print(f"Retrieved in total {len(df)} samples from {start} to {end}..")
+                #self.remove_ticker_and_store_list(ticker)
                 end_t = time.time()
                 print(f"Retrieving data for {ticker} took {(end_t - start_t)/60} mins..")
                 print("="*80)
@@ -180,10 +185,12 @@ class DataRetriever:
         
         
 if __name__ == "__main__":
+    symbols = ["ADAUSDT", "SOLUSDT", "DOTUSDT", "XRPUSDT"]
     dataRetriever = DataRetriever()
     # connect client to binance server
     dataRetriever.connect()
     # get all available coins traidable with USDT (default)
-    dataRetriever.get_only_tickers_containing_symbol()
+    dataRetriever.tickers = symbols
+    #dataRetriever.get_only_tickers_containing_symbol()
     # get all historical data for available coins 
     dataRetriever.retrieve_all_historical_data()

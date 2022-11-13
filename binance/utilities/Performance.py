@@ -4,26 +4,32 @@ import numpy as np
 
 class Performance:
     def __init__(self, data=None, symbol=None):
-        if data is None and symbol is None:
+
+        self.symbol = symbol
+
+        if data is None:
             print("WARNING: Data and symbol were not provided to constructor\n"
                   "Please use the function 'set_data'. to set data to be analysed.")
         else:
-            self.symbol = symbol
             self.data = data
             self.to_analyze = self.data.strategy
+            self.returns = self.data.returns
             self.tp_year = (self.data.Close.count() / ((self.data.index[-1] - self.data.index[0]).days / 365.25))
 
-    def set_data(self, data, symbol):
-        self.data = data.copy()
-        self.symbol = symbol
-        self.to_analyze = self.data.strategy
+    def set_strategy_data(self, strategy, returns):
+        self.to_analyze = strategy
+        self.returns = returns
 
+    def set_data(self, data):
+        self.data = data.copy()
+        self.to_analyze = self.data.strategy
+        self.returns = self.data.returns
         self.tp_year = (self.data.Close.count() / ((self.data.index[-1] - self.data.index[0]).days / 365.25))
 
     def calculate_performance(self):
 
         self.strategy_multiple = round(self.calculate_multiple(self.to_analyze), 6)
-        self.bh_multiple = round(self.calculate_multiple(self.data.returns), 6)
+        self.bh_multiple = round(self.calculate_multiple(self.returns), 6)
         self.outperf = round(self.strategy_multiple - self.bh_multiple, 6)
         self.cagr = round(self.calculate_cagr(self.to_analyze), 6)
         self.ann_mean = round(self.calculate_annualized_mean(self.to_analyze), 6)
@@ -36,7 +42,21 @@ class Performance:
         self.kelly_criterion = round(self.calculate_kelly_criterion(self.to_analyze), 6)
         self.num_of_trades = self.calclulate_num_of_trades()
 
+        # store some attributes of historical data
+        self.init_histdata_attr()
+
+    def init_histdata_attr(self):
+        self.start_d = self.data.index[0]
+        self.end_d = self.data.index[-1]
+        self.num_samples = len(self.data)
+
     def print_performance(self):
+
+        # data = results.copy()
+        #
+        # self.to_analyze = data.strategy
+        # self.returns = data.returns
+        self.calculate_performance()
         ''' Calculates and prints various Performance Metrics.
         '''
         print(100 * "=")
@@ -47,7 +67,7 @@ class Performance:
         # print("\n")
         print("PERFORMANCE MEASURES:")
         print("\n")
-        print(f"Number of trades: {self.num_of_trades}")
+       # print(f"Number of trades: {self.num_of_trades}")
         print("Multiple (Strategy):         {}".format(self.strategy_multiple))
         print("Multiple (Buy-and-Hold):     {}".format(self.bh_multiple))
         print(38 * "-")
@@ -67,7 +87,10 @@ class Performance:
 
     ############################## Performance ######################################
     def calclulate_num_of_trades(self):
-        return self.data.trades.value_counts().to_dict()[1.0]
+        if 1.0 in self.data.trades.value_counts().to_dict():
+            return self.data.trades.value_counts().to_dict()[1.0]
+        else:
+            return 0
 
     def calculate_multiple(self, series):
         return np.exp(series.sum())

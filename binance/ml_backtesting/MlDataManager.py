@@ -2,12 +2,28 @@ import pandas as pd
 import os
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
 
+from scipy.linalg import svd
+from scipy import stats
+from sklearn.decomposition import TruncatedSVD
+from sklearn.manifold import TSNE
+from sklearn.preprocessing import StandardScaler
+from matplotlib.ticker import MaxNLocator
+import ta
 
 class MlDataManager:
 
     def __init__(self, hist_data_folder="../hist_data"):
         self.hist_data_folder = hist_data_folder
+
+        self.data = None
+        self.X_train = None
+        self.y_train = None
+        self.X_val = None
+        self.y_val = None
+        self.y_pred = None
 
     def get_path(self, symbol):
         symbol_folder = os.path.join(self.hist_data_folder, symbol)
@@ -22,15 +38,36 @@ class MlDataManager:
             print(f"ERROR: Could not find any data for {symbol}..")
             return None
         
-    def load_data(self, symbol):
+    def load_data(self, symbol, parse_dates=False, freq="1min"):
         data_path = self.get_path(symbol)
         _, file_extension = os.path.splitext(data_path)
         if file_extension == ".gzip":
             self.data = pd.read_parquet(data_path)
         else:
             self.data = pd.read_csv(data_path, parse_dates=["Date"], index_col="Date")
-    
+
         self.data.fillna(method="ffill", inplace=True)
+
+        freq = "60min"
+        self.data = self.data.resample(freq).last().dropna().iloc[:-1]
+        #self.data = self.data[:280]
+
+        if not parse_dates:
+            self.data.reset_index(drop=True, inplace=True)
+    def preprocess_data(self, transform="standardize"):
+        self.add_features()
+        self.add_target()
+        self.clean()
+        self.train_test_split()
+        self.convert_to_floats()
+        if transform == "standardize":
+            self.standardize()
+        else:
+            self.scale()
+
+        self.x_val_close = self.close_prices[self.X_val.index].reset_index(drop=True)
+        self.X_val.reset_index(drop=True, inplace=True)
+        self.y_val.reset_index(drop=True, inplace=True)
 
     # Add Features
     def add_features(self):
@@ -59,8 +96,18 @@ class MlDataManager:
         self.add_roc(n=30)
         self.add_roc(n=200)
 
+        # add MA
+        self.add_ma(n=10)
+        self.add_ma(n=30)
+        self.add_ma(n=200)
         # add OBV
         self.add_obv()
+
+    # Calculation of moving average
+    def add_ma(self, n):
+
+        ma_str = 'MA_' + str(n)
+        self.data[ma_str] = pd.Series(self.data['Close'].rolling(n, min_periods=n).mean(), name='MA_' + str(n))
 
     def add_obv(self):
         self.data["OBV"] = (np.sign(self.data["Close"].diff()) * self.data["Volume"]).fillna(0).cumsum()
@@ -87,7 +134,7 @@ class MlDataManager:
         self.data[rsi_str] = 100 - 100 / (1 + rs)
 
     # calculation of rate of change
-    def add_ros(self, n):
+    def add_roc(self, n):
         M = self.data["Close"].diff(n - 1)
         N = self.data["Close"].shift(n - 1)
         roc_str = 'ROC_' + str(n)
@@ -111,18 +158,74 @@ class MlDataManager:
         self.data['signal'] = np.where(self.data['short_mavg'] > self.data['long_mavg'], 1, 0)
 
     def convert_to_floats(self):
-        self.data = self.data.astype(float)
+        self.X_train = self.X_train.astype(float)
+        self.X_val = self.X_val.astype(float)
 
-    def remove_columns(self):
-        self.data.drop(columns=["Open", "High", "Low", "Volume"], inplace=True)
-        
-    def split(self):
-        self.X = self.data.loc[:, self.data.columns != "signal"]
-        self.y = self.data.loc[:, "signal"]
+    def clean(self):
+        self.data = self.data.replace([np.inf, -np.inf], np.nan)
+        self.data.dropna(inplace=True)
+        self.close_prices = self.data.Close
+        self.data.drop(columns=["Open", "High", "Low", "Close", "short_mavg", "long_mavg"], inplace=True)
+
 
     def scale(self):
         scaler = MinMaxScaler()
-        self.data = pd.DataFrame(scaler.fit_transform(self.data), columns=self.data.columns, index=self.data.index)
+        self.X_train = pd.DataFrame(scaler.fit_transform(self.X_train), columns=self.X_train.columns, index=self.X_train.index)
+        self.X_val = pd.DataFrame(scaler.transform(self.X_val), columns=self.X_val.columns, index=self.X_val.index)
+
+    def standardize(self):
+        standardiser = StandardScaler()
+        # cols = [col for col in self.X_train.columns if col != "Returns"]
+        self.X_train = pd.DataFrame(standardiser.fit_transform(self.X_train), columns=self.X_train.columns, index=self.X_train.index)
+        self.X_val = pd.DataFrame(standardiser.transform(self.X_val), columns=self.X_val.columns, index=self.X_val.index)
+
+    def train_test_split(self, split_idx=0.2, print_info=True):
+
+        X = self.data.loc[:,  self.data.columns != "signal"]
+        y = self.data.loc[:, "signal"]
+        self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(X, y,
+                                                                              test_size=split_idx,
+                                                                              shuffle=False)
+        if print_info:
+            print("=" * 80)
+            print(f"Shape of training set X_train: {self.X_train.shape}")
+            print(f"Shape of training set y_train: {self.y_train.shape}")
+            print(f"Shape of validation set X_val: {self.X_val.shape}")
+            print(f"Shape of validation set y_val: {self.y_val.shape}")
+            print("#" * 80)
+            print(f"Training set start date: {self.X_train.index[0]}")
+            print(f"Training set end date: {self.X_train.index[-1]}")
+            print(f"Validation set start date: {self.X_val.index[0]}")
+            print(f"Validation set end date: {self.X_val.index[-1]}")
+            print("=" * 80)
+
+    def perform_svd(self, ncomps=50, plot=True):
+
+        self.svd = TruncatedSVD(n_components=ncomps)
+        svd_fit = self.svd.fit(self.X_train_scaled_df)
+
+        self.X_train_svd = self.svd.fit_transform(self.X_train_scaled_df)
+        self.X_val_svd = self.svd.transform(self.X_val_scaled_df)
+
+        self.X_train_svd_df = pd.DataFrame(self.X_train_svd,
+                                           columns=['c{}'.format(c) for c in range(ncomps)],
+                                           index=self.X_train_scaled_df.index)
+        self.X_val_svd_df = pd.DataFrame(self.X_val_svd,
+                                         columns=['c{}'.format(c) for c in range(ncomps)],
+                                         index=self.X_val_scaled_df.index)
+
+        if plot:
+            plt_data = pd.DataFrame(svd_fit.explained_variance_ratio_.cumsum() * 100)
+            plt_data.index = np.arange(1, len(plt_data) + 1)
+
+            ax = plt_data.plot(kind='line', figsize=(10, 4))
+            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+            ax.set_xlabel("Eigenvalues")
+            ax.set_ylabel("Percentage Explained")
+            ax.legend("")
+            print('Variance preserved by first 50 components == {:.2%}'.format(
+                svd_fit.explained_variance_ratio_.cumsum()[-1]))
+
 
 if __name__ == "__main__":
 

@@ -11,19 +11,22 @@ from sklearn.decomposition import TruncatedSVD
 from sklearn.manifold import TSNE
 from sklearn.preprocessing import StandardScaler
 from matplotlib.ticker import MaxNLocator
-import ta
+
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import StandardScaler
+
 
 class MlDataManager:
-
-    def __init__(self, hist_data_folder="../hist_data"):
+    def __init__(self, hist_data_folder="../hist_data", training=True):
         self.hist_data_folder = hist_data_folder
-
+        self.training = training
         self.data = None
         self.X_train = None
         self.y_train = None
         self.X_val = None
         self.y_val = None
         self.y_pred = None
+        self.features = None
 
     def get_path(self, symbol):
         symbol_folder = os.path.join(self.hist_data_folder, symbol)
@@ -37,37 +40,57 @@ class MlDataManager:
         else:
             print(f"ERROR: Could not find any data for {symbol}..")
             return None
-        
-    def load_data(self, symbol, parse_dates=False, freq="1min"):
+
+    def set_data(self, data):
+        """
+        Set data:
+        :param Pandas DataFrame data: Historical data of cryptocurrency.
+        """
+        self.data = data.copy()
+
+    def load_data(self, symbol):
         data_path = self.get_path(symbol)
-        _, file_extension = os.path.splitext(data_path)
-        if file_extension == ".gzip":
-            self.data = pd.read_parquet(data_path)
+        if os.path.exists(data_path):
+            _, file_extension = os.path.splitext(data_path)
+            if file_extension == ".gzip":
+                self.data = pd.read_parquet(data_path)
+            else:
+                self.data = pd.read_csv(data_path, parse_dates=["Date"], index_col="Date")
+            self.data.fillna(method="ffill", inplace=True)
         else:
-            self.data = pd.read_csv(data_path, parse_dates=["Date"], index_col="Date")
+            print(f"ERROR: The path {data_path} does not exist.")
 
-        self.data.fillna(method="ffill", inplace=True)
-
-        freq = "60min"
-        self.data = self.data.resample(freq).last().dropna().iloc[:-1]
-        #self.data = self.data[:280]
-
+    def down_sample(self, freq, parse_dates=False):
+        freq = "{}min".format(freq)
+        volume = self.data["Volume"].resample(freq).sum().iloc[:-1]
+        self.data = self.data.loc[:, self.data.columns != "Volume"].resample(freq).last().iloc[:-1]
+        self.data["Volume"] = volume
         if not parse_dates:
             self.data.reset_index(drop=True, inplace=True)
-    def preprocess_data(self, transform="standardize"):
-        self.add_features()
-        self.add_target()
-        self.clean()
-        self.train_test_split()
-        self.convert_to_floats()
-        if transform == "standardize":
-            self.standardize()
-        else:
-            self.scale()
 
-        self.x_val_close = self.close_prices[self.X_val.index].reset_index(drop=True)
-        self.X_val.reset_index(drop=True, inplace=True)
-        self.y_val.reset_index(drop=True, inplace=True)
+    def preprocess_data(self, short_mavg=10, long_mavg=60, transform="standardize", freq=60):
+
+        if self.training:
+            self.down_sample(freq)
+            self.add_features()
+            self.add_target(short_mavg, long_mavg)
+            self.clean()
+            self.train_test_split()
+            self.convert_to_floats()
+            if transform == "standardize":
+                self.standardize()
+            else:
+                self.scale()
+
+            self.X_val.reset_index(drop=True, inplace=True)
+            self.y_val.reset_index(drop=True, inplace=True)
+
+        else:
+            self.add_features()
+            # convert to float type
+            self.data = self.data.astype(float)
+            self.clean()
+            self.standardize()
 
     # Add Features
     def add_features(self):
@@ -103,7 +126,12 @@ class MlDataManager:
         # add OBV
         self.add_obv()
 
+        # add Returns
+        self.add_returns()
     # Calculation of moving average
+
+    def add_returns(self):
+        self.data["returns"] = np.log(self.data.Close / self.data.Close.shift())
     def add_ma(self, n):
 
         ma_str = 'MA_' + str(n)
@@ -147,13 +175,13 @@ class MlDataManager:
                                / (self.data["High"].rolling(n).max() - self.data["Low"].rolling(n).min())) * 100
         self.data[stod_str] = self.data[stock_str].rolling(3).mean()
 
-    def add_target(self):
+    def add_target(self, short_mavg=10, long_mavg=60):
         # Initialize the `signals` DataFrame with the `signal` column
         # datas['PriceMove'] = 0.0
         # Create short simple moving average over the short window
-        self.data['short_mavg'] = self.data['Close'].rolling(window=10, min_periods=1, center=False).mean()
+        self.data['short_mavg'] = self.data['Close'].rolling(window=short_mavg, min_periods=1, center=False).mean()
         # Create long simple moving average over the long window
-        self.data['long_mavg'] = self.data['Close'].rolling(window=60, min_periods=1, center=False).mean()
+        self.data['long_mavg'] = self.data['Close'].rolling(window=long_mavg, min_periods=1, center=False).mean()
         # Create signals
         self.data['signal'] = np.where(self.data['short_mavg'] > self.data['long_mavg'], 1, 0)
 
@@ -164,9 +192,11 @@ class MlDataManager:
     def clean(self):
         self.data = self.data.replace([np.inf, -np.inf], np.nan)
         self.data.dropna(inplace=True)
-        self.close_prices = self.data.Close
-        self.data.drop(columns=["Open", "High", "Low", "Close", "short_mavg", "long_mavg"], inplace=True)
-
+        # self.close_prices = self.data.Close
+        if self.training:
+            self.data.drop(columns=["Volume", "Open", "High", "Low", "Close", "short_mavg", "long_mavg"], inplace=True)
+        else:
+            self.data.drop(columns=["Volume", "Open", "High", "Low", "Close"], inplace=True)
 
     def scale(self):
         scaler = MinMaxScaler()
@@ -174,12 +204,31 @@ class MlDataManager:
         self.X_val = pd.DataFrame(scaler.transform(self.X_val), columns=self.X_val.columns, index=self.X_val.index)
 
     def standardize(self):
-        standardiser = StandardScaler()
-        # cols = [col for col in self.X_train.columns if col != "Returns"]
-        self.X_train = pd.DataFrame(standardiser.fit_transform(self.X_train), columns=self.X_train.columns, index=self.X_train.index)
-        self.X_val = pd.DataFrame(standardiser.transform(self.X_val), columns=self.X_val.columns, index=self.X_val.index)
+        remainders = ["returns"]
+        if self.training:
+            self.features = [col for col in self.X_train.columns if col not in remainders]
+        else:
+            self.features = [col for col in self.data.columns if col not in remainders]
 
-    def train_test_split(self, split_idx=0.2, print_info=True):
+        ct = ColumnTransformer([
+            ('scaler', StandardScaler(), self.features)
+        ], remainder='passthrough')
+
+        if self.training:
+            self.features = [col for col in self.X_train.columns if col not in remainders]
+            self.X_train = pd.DataFrame(ct.fit_transform(self.X_train),
+                                      columns=self.features + remainders, index=self.X_train.index)
+            self.X_val = pd.DataFrame(ct.transform(self.X_val),
+                                      columns=self.features + remainders, index=self.X_val.index)
+        else:
+            #columns = list(self.data.columns)
+            #index = self.data.index
+            #self.data = ct.fit_transform(self.data.to_numpy())
+            self.data = pd.DataFrame(ct.fit_transform(self.data),
+                                      columns=self.data.columns, index=self.data.index)
+
+
+    def train_test_split(self, split_idx=0.1, print_info=True):
 
         X = self.data.loc[:,  self.data.columns != "signal"]
         y = self.data.loc[:, "signal"]

@@ -29,15 +29,12 @@ from datetime import datetime
 from credentials import *
 testnet = True
 
-if not testnet:
-    client = Client(api_key = api_key, api_secret = secret_key, tld = "com")
-else:
-    client = Client(api_key = testnet_api_key, api_secret = testnet_secret_key, tld = "com", testnet=True)
+
 
 
 class LongOnlyTrader():
 
-    def __init__(self, symbol, bar_length, units, position=0):
+    def __init__(self, symbol, bar_length, units, position=0, testnet=True):
 
         self.symbol = symbol
         self.bar_length = bar_length
@@ -56,6 +53,69 @@ class LongOnlyTrader():
 
         self.email = Email()
         # ************************************************************************
+        # parameter used for binance client connection/reconnection
+        self.client = None
+        self.testnet = testnet
+        self.max_attempts = 100
+        self.wait = 15
+        self.wait_increase = 15
+
+        # create and connect binance client
+        self.connect_client()
+
+    def connect_client(self):
+        try:
+            if not self.testnet:
+                self.client = Client(api_key=api_key, api_secret=secret_key, tld="com")
+            else:
+                self.client = Client(api_key=testnet_api_key, api_secret=testnet_secret_key, tld="com", testnet=True)
+        except Exception as e:
+            print(f"Error occurred during connection establishment with server..")
+
+    def client_is_connected(self, reconnect=True, verbose=False):
+
+        try:
+            if len(self.client.ping()) == 0:
+                if verbose:
+                    print("Connection is ok.")
+                return True
+        except Exception as e:
+            if verbose:
+                print(f"Connection with Binance server was lost.. Trying to reconnect..")
+            if reconnect:
+                return self.reconnect_client()
+            else:
+                return False
+
+    def reconnect_client(self):
+        attempt = 0
+        success = False
+        self.max_attempts = 35
+        self.wait = 15
+        self.wait_increase = 15
+        while True:
+            try:
+                self.connect_client()
+                success = self.client_is_connected(reconnect=False, verbose=True)
+            except Exception as e:
+                print(e, end=" | ")
+            else:
+                if success:
+                    print("INFO: Reconnected. Starting trading..")
+                    self.start_trading()
+                    break
+            finally:
+                attempt += 1
+                print("Attempt: {}".format(attempt), end='\n')
+                if not success:
+                    if attempt >= self.max_attempts:
+                        print("Max_attempts reached!")
+                        print("Could not connect with Binance server.")
+                        exit(0)
+                    else:  # try again
+                        time.sleep(self.wait)
+                        self.wait += self.wait_increase
+                        self.wait_increase += 15
 
     def load_model(self):
         if os.path.exists(self.model_path):
@@ -63,7 +123,7 @@ class LongOnlyTrader():
         else:
             print(f"ERROR: The model path {self.model_path} does not exist..")
 
-    def start_trading(self, historical_days):
+    def start_trading(self, historical_days=3):
 
         self.twm = ThreadedWebsocketManager()
         self.twm.start()
@@ -80,7 +140,7 @@ class LongOnlyTrader():
         now = datetime.utcnow()
         past = str(now - timedelta(days=days))
 
-        bars = client.get_historical_klines(symbol=symbol, interval=interval,
+        bars = self.client.get_historical_klines(symbol=symbol, interval=interval,
                                             start_str=past, end_str=None, limit=1000)
         df = pd.DataFrame(bars)
         df["Date"] = pd.to_datetime(df.iloc[:, 0], unit="ms")
@@ -122,7 +182,7 @@ class LongOnlyTrader():
         # if self.cum_profits <> xyz
 
         # print out
-        print(".", end="", flush=True)  # just print something to get a feedback (everything OK)
+        #print(".", end="", flush=True)  # just print something to get a feedback (everything OK)
 
         # feed df (add new bar / update latest bar)
         self.data.loc[start_time] = [first, high, low, close, volume, complete]
@@ -133,19 +193,22 @@ class LongOnlyTrader():
             self.data_manager.preprocess_data()
             self.define_strategy()
             self.execute_trades()
+
             self.report_as_email()
 
     def report_as_email(self):
         now = datetime.now()
         # If it's the beginning of the hour, send the email
-        #if now.minute == 0:
-        cum_profits = round(np.sum(self.trade_values[:-1]), 3)
-        num_trades = self.trades
-
-        text = f"""Total number of trades: {num_trades}
-Total profit: {cum_profits}
-        """
-        self.email.send_email(text)
+        if now.minute == 0:
+            if self.trades % 2 == 0:
+                real_profit = round(np.sum(self.trade_values[-2:]), 3)
+                self.cum_profits = round(np.sum(self.trade_values), 3)
+            else:
+                real_profit = 0
+                self.cum_profits = round(np.sum(self.trade_values[:-1]), 3)
+            text = f"""Number of Trades:  {self.trades}
+    Profit = {real_profit} | CumProfits = {self.cum_profits}"""
+            self.email.send_email(text)
 
     def define_strategy(self):
 
@@ -154,18 +217,17 @@ Total profit: {cum_profits}
         self.prepared_data = self.data_manager.data.copy()
         self.prepared_data.drop(columns=["Complete"], inplace=True)
         self.prepared_data["position"] = self.model.predict(self.prepared_data)
-        self.prepared_data["position"] = self.prepared_data.position.ffill().fillna(
-            0)  # start with neutral position if no strong signal
+        self.prepared_data["position"] = self.prepared_data.position.ffill().fillna(0)  # start with neutral position if no strong signal
 
     def execute_trades(self):
         if self.prepared_data["position"].iloc[-1] == 1:  # if position is long -> go/stay long
             if self.position == 0:
-                order = client.create_order(symbol=self.symbol, side="BUY", type="MARKET", quantity=self.units)
+                order = self.client.create_order(symbol=self.symbol, side="BUY", type="MARKET", quantity=self.units)
                 self.report_trade(order, "GOING LONG")
             self.position = 1
         elif self.prepared_data["position"].iloc[-1] == 0:  # if position is neutral -> go/stay neutral
             if self.position == 1:
-                order = client.create_order(symbol=self.symbol, side="SELL", type="MARKET", quantity=self.units)
+                order = self.client.create_order(symbol=self.symbol, side="SELL", type="MARKET", quantity=self.units)
                 self.report_trade(order, "GOING NEUTRAL")
             self.position = 0
 
@@ -199,13 +261,27 @@ Total profit: {cum_profits}
         print("{} | Profit = {} | CumProfits = {} ".format(time, real_profit, self.cum_profits))
         print(100 * "-" + "\n")
 
+
+def record_order(order, trader):
+    side = order["side"]
+    quote_units = float(order["cummulativeQuoteQty"])
+    # calculate trading profits
+    trader.trades += 1
+    if side == "BUY":
+        trader.trade_values.append(-quote_units)
+    elif side == "SELL":
+        trader.trade_values.append(quote_units)
+
 if __name__ == "__main__":
     symbol = "XRPUSDT"
-    bar_length = "1m"
-    units = 500
+    bar_length = "15m"
+    units = 1000
     position = 0
 
     trader = LongOnlyTrader(symbol=symbol, bar_length=bar_length, units=units, position=position)
-    trader.start_trading(historical_days=1)
-    print("Waiting 60 sec. before finishing..")
-    time.sleep(500)
+    trader.start_trading(historical_days=4)
+
+    print("Trading started..")
+    while True:
+        trader.client_is_connected(reconnect=True, verbose=False)
+        time.sleep(15)

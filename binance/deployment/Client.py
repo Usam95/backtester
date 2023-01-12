@@ -194,7 +194,11 @@ class LongOnlyTrader():
             self.define_strategy()
             self.execute_trades()
 
-            self.report_as_email()
+            try:
+                self.report_as_email()
+            except Exception as e:
+                print(f"ERROR: {e}..")
+                print(f"Could not send email report..")
 
     def report_as_email(self):
         now = datetime.now()

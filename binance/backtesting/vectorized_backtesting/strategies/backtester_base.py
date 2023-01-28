@@ -8,7 +8,6 @@ from sklearn.model_selection import train_test_split
 
 
 class VectorBacktesterBase:
-
     def __init__(self, filepath, symbol, tc=0.00007, start=None, end=None, dataset="training"):
         self.filepath = filepath
         self.symbol = symbol
@@ -19,8 +18,9 @@ class VectorBacktesterBase:
         self.dataset = dataset
         self.test_size = 0.2
         self.get_data()
-        self.tp_year = (self.data.Close.count() / ((self.data.index[-1] - self.data.index[0]).days / 365.25))
         self.results_folder = "../results"
+        self.tp_year = (self.data.Close.count() / ((self.data.index[-1] - self.data.index[0]).days / 365.25))
+
     def __repr__(self):
         return "BollBacktester(symbol = {}, start = {}, end = {})".format(self.symbol, self.start, self.end)
 
@@ -75,7 +75,7 @@ class VectorBacktesterBase:
         data["trades"] = data.position.diff().fillna(0).abs()
 
         # subtract transaction/trading costs from pre-cost return
-        data.strategy = data.strategy - data.trades * self.tc
+        data["strategy_net"] = data.strategy - data.trades * self.tc
 
         self.results = data
 

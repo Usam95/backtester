@@ -1,13 +1,19 @@
-from Performance import Performance
-from VectorBacktesterBase import VectorBacktesterBase
+import os
+import sys
 
-import pandas as pd
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
+
+from utilities.Performance import Performance
+from utilities.DataPlot import DataPlot
+from BacktesterBase import VectorBacktesterBase
+
 import numpy as np
 from itertools import product
-import matplotlib.pyplot as plt
-from DataPlot import DataPlot
 
-class VectorBBBacktester(VectorBacktesterBase):
+
+class BBBacktester(VectorBacktesterBase):
 
         def __init__(self, filepath, symbol, tc=0.00007, dataset="training", start=None, end=None):
             super().__init__(filepath=filepath, symbol=symbol, start=start, end=end, tc=tc)
@@ -40,6 +46,9 @@ class VectorBBBacktester(VectorBacktesterBase):
             data = self.results.copy()
             data["creturns"] = data["returns"].cumsum().apply(np.exp)
             data["cstrategy"] = data["strategy"].cumsum().apply(np.exp)
+
+            data["strategy_net"] = data.strategy - data.trades * ptc
+            data["cstrategy_net"] = data.strategy_net.cumsum().apply(np.exp)
             self.results = data
 
         def prepare_data(self, freq, window, dev):  # Adj!!!
@@ -116,7 +125,7 @@ class VectorBBBacktester(VectorBacktesterBase):
                 self.perf_obj.set_data(self.results)
                 self.perf_obj.calculate_performance()
                 # store strategy performance data for further plotting
-                params_dic = {"freq": comb[0], "SMA": comb[1], "dev": comb[2]}
+                params_dic = {"freq": comb[0], "SMA": comb[1], "Dev": comb[2]}
 
                 self.dataploter.store_testcase_data(self.perf_obj, params_dic)  # comb[0] is current data freq
 
@@ -138,13 +147,13 @@ class VectorBBBacktester(VectorBacktesterBase):
                                                                           round(perf, 6)))
             self.test_strategy(freq, sma, dev)
 
-#if __name__ == "__main__":
-    # filepath = "../../../hist_data/XRPUSDT/train/XRPUSDT.csv"
-    # symbol = "XRPUSDT"
-    # start = "2020-08-20"
-    # end = "2020-11-20"
-    # ptc = 0.00007
-    # bb = BBStrategy(filepath=filepath, symbol=symbol, start=start, end=end, tc=ptc)
-    # bb.optimize_strategy((1, 30, 10), (10, 30, 10), (10, 50, 10), metric="Calmar")
-    #print(len(bb.dataploter.df))
-    #print(bb.dataploter.df.head())
+if __name__ == "__main__":
+    filepath = "../../../hist_data/XRPUSDT/train/XRPUSDT.csv"
+    symbol = "XRPUSDT"
+    start = "2020-08-20"
+    end = "2020-11-20"
+    ptc = 0.00007
+    #bb = BBStrategy(filepath=filepath, symbol=symbol, start=start, end=end, tc=ptc)
+   # bb.optimize_strategy((1, 30, 10), (10, 30, 10), (10, 50, 10), metric="Calmar")
+    print(len(bb.dataploter.df))
+    print(bb.dataploter.df.head())

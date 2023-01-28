@@ -1,14 +1,22 @@
+import os
+import sys
 
-from Performance import Performance
-from VectorBacktesterBase import VectorBacktesterBase
+sys.path.append(os.path.join(os.path.dirname(__file__), '.'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
+
+from utilities.Performance import Performance
+from utilities.DataPlot import DataPlot
+
+from BacktesterBase import VectorBacktesterBase
 
 import pandas as pd
 import numpy as np
 from itertools import product
 import matplotlib.pyplot as plt
-from DataPlot import DataPlot
 
-class VectorEMABacktester(VectorBacktesterBase):
+class EMABacktester(VectorBacktesterBase):
 
     def __init__(self, filepath, symbol, tc=0.00007, dataset="training", start=None, end=None):
         super().__init__(filepath=filepath, symbol=symbol, start=start, end=end, tc=tc, dataset=dataset)
@@ -42,6 +50,10 @@ class VectorEMABacktester(VectorBacktesterBase):
         data = self.results.copy()
         data["creturns"] = data["returns"].cumsum().apply(np.exp)
         data["cstrategy"] = data["strategy"].cumsum().apply(np.exp)
+
+        data["strategy_net"] = data.strategy - data.trades * ptc
+        data["cstrategy_net"] = data.strategy_net.cumsum().apply(np.exp)
+
         self.results = data
 
 
@@ -97,15 +109,15 @@ class VectorEMABacktester(VectorBacktesterBase):
         self.metric = metric
 
         if metric == "Multiple":
-            performance_function =  self.perf_obj.calculate_multiple
+            performance_function = self.perf_obj.calculate_multiple
         elif metric == "Sharpe":
-            performance_function =  self.perf_obj.calculate_sharpe
+            performance_function = self.perf_obj.calculate_sharpe
         elif metric == "Sortino":
-            performance_function =  self.perf_obj.calculate_sortino
+            performance_function = self.perf_obj.calculate_sortino
         elif metric == "Calmar":
-            performance_function =  self.perf_obj.calculate_calmar
+            performance_function = self.perf_obj.calculate_calmar
         elif metric == "Kelly":
-            performance_function =  self.perf_obj.calculate_kelly_criterion
+            performance_function = self.perf_obj.calculate_kelly_criterion
 
         freqs = range(*freq_range)
         ema_s = range(*EMA_S_range)
@@ -117,18 +129,21 @@ class VectorEMABacktester(VectorBacktesterBase):
 
         # for data plotting
         #self.strategy_df = pd.DataFrame()
-
+        count = 0
         for comb in combinations:
-            self.prepare_data(comb[0], comb[1], comb[2])
-            self.upsample()
-            self.run_backtest()
-            performance.append(performance_function(self.results.strategy))
-            # set strategy data and calculate performance
-            self.perf_obj.set_data(self.results)
-            self.perf_obj.calculate_performance()
-            # store strategy performance data for further plotting
-            params_dic = {"freq":comb[0], "EMA_S":comb[1], "EMAL":comb[2]}
-            self.dataploter.store_testcase_data(self.perf_obj, params_dic) # comb[0] is current data freq
+            if comb[1] < comb[2]:
+                self.prepare_data(comb[0], comb[1], comb[2])
+                self.upsample()
+                self.run_backtest()
+                performance.append(performance_function(self.results.strategy_net))
+                # set strategy data and calculate performance
+                self.perf_obj.set_data(self.results)
+                self.perf_obj.calculate_performance()
+                # store strategy performance data for further plotting
+                params_dic = {"freq":comb[0], "EMA_S":comb[1], "EMA_L":comb[2]}
+                self.dataploter.store_testcase_data(self.perf_obj, params_dic) # comb[0] is current data freq
+                count +=1
+        print(f"Total number of test: {count}")
 
         #self.results_overview = pd.DataFrame(data=np.array(combinations),
         #                                     columns=["Freq", "EMA_S", "EMA_L"])
@@ -154,5 +169,5 @@ if __name__ == "__main__":
     start = ",2021-11-20"
     end = "2022-08-20"
     ptc = 0.00007
-    ema = VectorEMABacktester(filepath=filepath, symbol=symbol, start=start, end=end, tc=ptc)
+    ema = EMABacktester(filepath=filepath, symbol=symbol, start=start, end=end, tc=ptc)
     ema.optimize_strategy((1, 30, 10), (10, 30, 10), (10, 50, 10), metric="Calmar")

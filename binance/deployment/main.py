@@ -2,16 +2,15 @@ from binance.client import Client
 import os
 import pandas as pd
 import numpy as np
-import tqdm
 import pickle
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 from binance.client import Client
 from binance import ThreadedWebsocketManager
 import pandas as pd
 from datetime import datetime, timedelta
 
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split, KFold, cross_val_score, GridSearchCV
+#from sklearn.linear_model import LogisticRegression
+#from sklearn.model_selection import train_test_split, KFold, cross_val_score, GridSearchCV
 import time
 #Disable the warnings
 import warnings
@@ -189,10 +188,12 @@ class LongOnlyTrader():
 
         # prepare features and define strategy/trading positions whenever the latest bar is complete
         if complete == True:
-            self.data_manager.set_data(self.data)
-            self.data_manager.preprocess_data()
-            self.define_strategy()
-            self.execute_trades()
+            if self.ml_trading:
+                self.data_manager.set_data(self.data)
+                self.data_manager.preprocess_data()
+                self.define_strategy()
+                self.execute_trades()
+            else:
 
             try:
                 self.report_as_email()
@@ -222,6 +223,10 @@ class LongOnlyTrader():
         self.prepared_data.drop(columns=["Complete"], inplace=True)
         self.prepared_data["position"] = self.model.predict(self.prepared_data)
         self.prepared_data["position"] = self.prepared_data.position.ffill().fillna(0)  # start with neutral position if no strong signal
+
+    def get_trading_signal(self) -> str:
+        signal = self.model.get_signal(self.data)
+        return signal
 
     def execute_trades(self):
         if self.prepared_data["position"].iloc[-1] == 1:  # if position is long -> go/stay long

@@ -7,7 +7,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
 
 from utilities.Performance import Performance
 from utilities.DataPlot import DataPlot
-from BacktesterBase import VectorBacktesterBase
+from backtester_base import VectorBacktesterBase
 
 import numpy as np
 from itertools import product
@@ -113,7 +113,7 @@ class BBBacktester(VectorBacktesterBase):
 
             combinations = list(product(freqs, windows, devs))
 
-            print(f"INFO: Optimizing of {self.indicator} for {self.symbol} using in total {len(combinations)} combinations..")
+            print(f"INFO: Optimizing of {self.indicator} for {self.symbol} using in total {len(combinations)} combinations..", flush=True)
 
             performance = []
             for comb in combinations:

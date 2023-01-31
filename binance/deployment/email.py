@@ -15,7 +15,9 @@ class Email:
         self.init_msg()
         self.init_sender()
     def init_sender(self):
-        self.smtp = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+        self.smtp = smtplib.SMTP('smtp.gmail.com:587')
+        self.smtp.ehlo()
+        self.smtp.starttls()
         self.smtp.login(email_user, email_password)
 
     def init_msg(self):
@@ -28,8 +30,15 @@ class Email:
         self.msg.set_content(text)
 
     def send_email(self, text):
-        self.msg.set_content(text)
-        self.smtp.send_message(self.msg)
+        try:
+            self.msg.set_content(text)
+            self.smtp.send_message(self.msg)
+        except Exception: # replace this with the appropriate SMTPLib exception
+
+            # Overwrite the stale connection object with a new one
+            # Then, re-attempt the smtp_operations() method (now that you have a fresh connection object instantiated).
+            self.init_sender()
+            self.send_email(text)
 
 
 if __name__ == "__main__":

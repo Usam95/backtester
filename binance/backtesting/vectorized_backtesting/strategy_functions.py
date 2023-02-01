@@ -2,6 +2,7 @@ from core_config import config
 import os
 from strategies.ema_backtester import EMABacktester
 from strategies.sma_backtester import SMABacktester
+from strategies.macd_backtester import MACDBacktester
 
 from strategies.bb_blacktester import BBBacktester
 import sys
@@ -27,7 +28,22 @@ def get_hist_data_file(ticker):
         exit(0)
     return path
 
+def execute_macd(ticker):
+    output_dir = create_ticker_output_dir(ticker)
+    input_file = get_hist_data_file(ticker)
 
+    macd_backtester = MACDBacktester(symbol=ticker, filepath=input_file,
+                                   tc=config.ptc,
+                                   start=config.time_frame["start_date"],
+                                   end=config.time_frame["end_date"])
+
+    macd_backtester.optimize_strategy(freq_range=config.strategy_conf.freq,
+                                     EMA_S_range=config.strategy_conf.macd["ema_s"],
+                                     EMA_L_range=config.strategy_conf.macd["ema_l"],
+                                     signal_mw_range=config.strategy_conf.macd["signal_mw"],
+                                     metric=config.strategy_conf.metric)
+
+    macd_backtester.dataploter.store_data(output_dir)
 def execute_ema(ticker):
     output_dir = create_ticker_output_dir(ticker)
     input_file = get_hist_data_file(ticker)

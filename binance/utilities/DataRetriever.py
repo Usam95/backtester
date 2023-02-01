@@ -5,8 +5,10 @@ import tqdm
 import pickle
 import sys
 import time
+from datetime import datetime
 
 sys.path.append(".")
+sys.path.append("../")
 
 from credentials import *
 from binance.client import Client
@@ -61,7 +63,8 @@ class DataRetriever:
         self.folder = folder
 
     def connect(self): 
-        self.client = Client(api_key = api_key, api_secret = secret_key, tld = "com")
+        self.client = Client(api_key = testnet_api_key, api_secret = testnet_secret_key, tld = "com", testnet=True)
+
         if len(self.client.ping()) == 0:
             print(f"Connection to server is established.")
         else: 
@@ -121,7 +124,7 @@ class DataRetriever:
         print(f"Storing data for {symbol} as {path}")
         df.to_csv(path)                                       
         
-    def get_ticker_historical_data(self, ticker):
+    def get_ticker_historical_data(self, ticker, start_t=None):
         max_attempts = 12
         attempt = 0
         success = False
@@ -129,14 +132,20 @@ class DataRetriever:
         while True: 
             try: 
                 print(f"Retrieving data for {ticker} with 1m interval..")
-                timestamp = self.client._get_earliest_valid_timestamp(symbol = ticker, interval = "1m")
-                start_t = pd.to_datetime(timestamp, unit = "ms") # earliest data available on Binance
+                #timestamp = self.client._get_earliest_valid_timestamp(symbol = ticker, interval = "1m")
+                if start_t is not None:
+                    start_t = start_t
+                else:
+                    start_t = pd.to_datetime(timestamp, unit = "ms") # earliest data available on Binance
                 #timestamp = "2022-10-08"
-                end_str = "2022-10-09"
+                now = datetime.now()
+                end_str = now.strftime("%Y-%m-%d")
                 print(f"Data for {ticker} are available from {start_t}..")
-                bars = self.client.get_historical_klines(symbol = ticker, interval = "1m", start_str = timestamp, end_str=end_str)
-                
-            except Exeption as e: 
+                print(f"{end_str=}")
+                print(f"Loading bars..")
+                bars = self.client.get_historical_klines(symbol = ticker, interval = "1m", start_str = start_t, end_str=end_str)
+                print(f"Loaded bars length: {len(bars)}")
+            except Exception as e:
                 print(f"Could not retrieve data for {ticker}..", end = " | ")
                 print(e)
                 print("Trying to reconnect to server..")
@@ -157,7 +166,34 @@ class DataRetriever:
                 if attempt >= max_attempts: 
                     print(f"Programm stopped: max attempts reached..")
                     exit(0)
-                                        
+    def get_path(self, ticker):
+        symbol_folder = os.path.join(self.hist_data_folder, ticker)
+        folder_contents = os.listdir(symbol_folder)
+        if f"{ticker}.parquet.gzip" in folder_contents:
+            data_path = os.path.join(symbol_folder, f"{ticker}.parquet.gzip")
+            return data_path
+        elif f"{ticker}.csv" in folder_contents:
+            data_path = os.path.join(symbol_folder, f"{ticker}.csv")
+            return data_path
+        else:
+            print(f"ERROR: Could not find any data for {ticker}..")
+            exit(0)
+
+    def load_data(self, ticker):
+        data_path = self.get_path(ticker)
+        _, file_extension = os.path.splitext(data_path)
+        if file_extension == ".gzip":
+            return pd.read_parquet(data_path)
+        else:
+            return pd.read_csv(data_path, parse_dates=["Date"], index_col="Date")
+
+    def update_hist_data(self, tickers):
+        for ticker in tickers:
+            df = self.load_data(ticker)
+            last_timestamp = df.index[-1]
+
+
+
     def retrieve_all_historical_data(self):  
         total_start_t = time.time()
         for ticker in tqdm.tqdm(self.tickers): 

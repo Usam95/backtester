@@ -22,24 +22,26 @@ class Performance:
 
     def set_data(self, data):
         self.data = data.copy()
-        self.to_analyze = self.data.strategy
+        self.to_analyze = self.data.strategy_net
         self.returns = self.data.returns
         self.tp_year = (self.data.Close.count() / ((self.data.index[-1] - self.data.index[0]).days / 365.25))
 
     def calculate_performance(self):
 
-        self.strategy_multiple = round(self.calculate_multiple(self.to_analyze), 6)
-        self.bh_multiple = round(self.calculate_multiple(self.returns), 6)
-        self.outperf = round(self.strategy_multiple - self.bh_multiple, 6)
-        self.cagr = round(self.calculate_cagr(self.to_analyze), 6)
-        self.ann_mean = round(self.calculate_annualized_mean(self.to_analyze), 6)
-        self.ann_std = round(self.calculate_annualized_std(self.to_analyze), 6)
-        self.sharpe = round(self.calculate_sharpe(self.to_analyze), 6)
-        self.sortino = round(self.calculate_sortino(self.to_analyze), 6)
-        self.max_drawdown = round(self.calculate_max_drawdown(self.to_analyze), 6)
-        self.calmar = round(self.calculate_calmar(self.to_analyze), 6)
-        self.max_dd_duration = round(self.calculate_max_dd_duration(self.to_analyze), 6)
-        self.kelly_criterion = round(self.calculate_kelly_criterion(self.to_analyze), 6)
+        self.strategy_multiple_net = round(self.calculate_multiple(self.to_analyze), 3)
+        self.strategy_multiple = round(self.calculate_multiple(self.data.strategy), 3)
+        self.bh_multiple = round(self.calculate_multiple(self.returns), 3)
+        self.outperf_net = round(self.strategy_multiple_net - self.bh_multiple, 3)
+        self.outperf = round(self.strategy_multiple - self.bh_multiple, 3)
+        self.cagr = round(self.calculate_cagr(self.to_analyze), 3)
+        self.ann_mean = round(self.calculate_annualized_mean(self.to_analyze), 3)
+        self.ann_std = round(self.calculate_annualized_std(self.to_analyze), 3)
+        self.sharpe = round(self.calculate_sharpe(self.to_analyze), 3)
+        self.sortino = round(self.calculate_sortino(self.to_analyze), 3)
+        self.max_drawdown = round(self.calculate_max_drawdown(self.to_analyze), 3)
+        self.calmar = round(self.calculate_calmar(self.to_analyze), 3)
+        self.max_dd_duration = round(self.calculate_max_dd_duration(self.to_analyze), 3)
+        self.kelly_criterion = round(self.calculate_kelly_criterion(self.to_analyze), 3)
         self.num_of_trades = self.calclulate_num_of_trades()
 
         # store some attributes of historical data

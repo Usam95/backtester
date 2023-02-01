@@ -66,6 +66,7 @@ class DataRetrieverBase:
             return candles
         else:
             return None
+        print(f"Loaded data of length: {len(candles)}")
 
     def ms_to_dt_utc(self, ms: int) -> datetime:
         return datetime.utcfromtimestamp(ms / 1000)
@@ -86,6 +87,8 @@ class DataRetrieverBase:
         collection = []
 
         while start_time < end_time:
+            print(f"In get_ticker_hist_data_for_period: {start_time=}, {end_time=}:")
+            print(f"Calling: get_historical_data() function")
             data = self.get_historical_data(symbol, start_time=start_time, end_time=end_time, limit=limit)
             try:
                 print("BINANCE" + " " + symbol + " : Collected " + str(len(data)) + " initial data from " + str(

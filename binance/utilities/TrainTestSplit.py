@@ -37,7 +37,7 @@ def split_data(symbols):
         df = load_df(symbol)
         if df is not None: 
             train_df, test_df = train_test_split(df, test_size=split_size, shuffle=False)
-            print(f"INFO: Splitted data for {symbol}: total len: {len(df)}, train_df len: {len(train_df)}, test_df len: {len(test_df)}")
+                    print(f"INFO: Splitted data for {symbol}: total len: {len(df)}, train_df len: {len(train_df)}, test_df len: ^{len(test_df)}")
             store_data(train_df, test_df, symbol)
         else: 
             exit(0)

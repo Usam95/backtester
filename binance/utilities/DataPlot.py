@@ -1,9 +1,11 @@
+import os.path
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
 base_str_data = ['ticker', 'indicator', 'dataset',  'num_trades', 'strat_multiple',
-                 'bh_multiple', 'outperf', 'cagr', 'ann_mean', 'ann_std', 'sharpe', 'sortino',
+                 'bh_multiple', 'outperf_net', 'outperf', 'cagr', 'ann_mean', 'ann_std', 'sharpe', 'sortino',
                  'max_dd', 'calmar', 'max_dd_dur', 'kelly_crit', 'start_d',
                  'end_d', 'num_samples']
 
@@ -28,6 +30,7 @@ class DataPlot:
         testcase_data.append(perf_obj.num_of_trades)
         testcase_data.append(perf_obj.strategy_multiple)
         testcase_data.append(perf_obj.bh_multiple)
+        testcase_data.append(perf_obj.outperf_net)
         testcase_data.append(perf_obj.outperf)
         testcase_data.append(perf_obj.cagr)
         testcase_data.append(perf_obj.ann_mean)
@@ -52,6 +55,10 @@ class DataPlot:
             #print(key, value)
         self.df.loc[len(self.df)] = testcase_data
 
+    def store_data(self, output_dir):
+        path = os.path.join(output_dir, f"{self.symbol}_{self.indicator}.csv")
+        self.df.to_csv(path)
+        print(f"INFOR: Stored the test data into {path}..")
     def create_col(self):
         lst = []
 

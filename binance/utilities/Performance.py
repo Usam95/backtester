@@ -14,6 +14,11 @@ class Performance:
             self.data = data
             self.to_analyze = self.data.strategy
             self.returns = self.data.returns
+            self.tp_year = 1    # default value for number of years
+
+    def calculate_tp_year(self):
+        timeframe_in_days = (self.data.index[-1] - self.data.index[0]).days
+        if timeframe_in_days > 0:
             self.tp_year = (self.data.Close.count() / ((self.data.index[-1] - self.data.index[0]).days / 365.25))
 
     def set_strategy_data(self, strategy, returns):

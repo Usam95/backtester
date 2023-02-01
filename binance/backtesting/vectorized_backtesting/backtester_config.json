@@ -1,5 +1,5 @@
 {
-  "tickers": ["LTCUSDT", "XRPUSDT"],
+  "tickers": ["BNBUSDT", "LTCUSDT", "XRPUSDT", "BTCUSDT", "LTCUSDT", "TRXUSDT"],
   "fetch_data": true,
   "split_size": 0.2,
   "hist_data_folder": "../../hist_data/",
@@ -15,8 +15,7 @@
 
   "_comment": "accepted strategies: ema, sma, macd, bb, so, rsi",
   "strategies": [
-      "ema",
-      "bb",
-      "sma"
+      "macd"
   ]
 }
+

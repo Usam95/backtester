@@ -1,3 +1,7 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.optimize import brute
 import os
 import sys
 
@@ -5,23 +9,70 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
 
-from backtester_base import VectorBacktesterBase
-import numpy as np
-from itertools import product
 from utilities.DataPlot import DataPlot
 from utilities.Performance import Performance
+from itertools import product
+
+from backtester_base import VectorBacktesterBase
+
+plt.style.use("seaborn")
 
 
+class MACDBacktester(VectorBacktesterBase):
+    ''' Class for the vectorized backtesting of MACD-based trading strategies.
 
-class SMABacktester(VectorBacktesterBase):
+    Attributes
+    ==========
+    symbol: str
+        ticker symbol with which to work with
+    EMA_S: int
+        time window in days for shorter EMA
+    EMA_L: int
+        time window in days for longer EMA
+    signal_mw: int
+        time window is days for MACD Signal
+    start: str
+        start date for data retrieval
+    end: str
+        end date for data retrieval
+    tc: float
+        proportional transaction costs per trade
+
+
+    Methods
+    =======
+    get_data:
+        retrieves and prepares the data
+
+    set_parameters:
+        sets new MACD parameter(s)
+
+    test_strategy:
+        runs the backtest for the MACD-based strategy
+
+    plot_results:
+        plots the performance of the strategy compared to buy and hold
+
+    update_and_run:
+        updates MACD parameters and returns the negative absolute performance (for minimization algorithm)
+
+    optimize_parameters:
+        implements a brute force optimization for the three MACD parameters
+    '''
 
     def __init__(self, filepath, symbol, tc=0.00007, dataset="training", start=None, end=None):
         super().__init__(filepath=filepath, symbol=symbol, start=start, end=end, tc=tc, dataset=dataset)
-        self.indicator = "SMA"
+        self.indicator = "MACD"
         self.perf_obj = Performance(symbol=symbol)
         self.dataploter = DataPlot(dataset, self.indicator, self.symbol)
 
-    def test_strategy(self, freq=5, SMA_S=50, SMA_L=200):  # Adj!!!
+    def __repr__(self):
+        return "MACDBacktester(symbol = {}, MACD({}, {}, {}), start = {}, end = {})".format(self.symbol, self.EMA_S,
+                                                                                            self.EMA_L, self.signal_mw,
+                                                                                            self.start, self.end)
+
+
+    def test_strategy(self, freq=5, EMA_S=50, EMA_L=200, signal_mw=9):  # Adj!!!
         '''
         Prepares the data and backtests the trading strategy incl. reporting (Wrapper).
 
@@ -37,10 +88,10 @@ class SMABacktester(VectorBacktesterBase):
             number of standard deviations to calculate upper and lower bands.
         '''
         self.freq = "{}min".format(freq)
-        self.SMA_S = SMA_S
-        self.SMA_L = SMA_L  # NEW!!!
+        self.EMAS = EMA_S
+        self.SMA_L = EMA_L  # NEW!!!
 
-        self.prepare_data(freq, SMA_S, SMA_L)
+        self.prepare_data(freq, EMA_S, EMA_L, signal_mw)
         self.upsample()
         self.run_backtest()
 
@@ -55,11 +106,11 @@ class SMABacktester(VectorBacktesterBase):
         self.perf_obj.set_data(self.results)
         self.perf_obj.calculate_performance()
         # store strategy performance data for further plotting
-        params_dic = {"freq": freq, "SMA_S": SMA_S, "SMA_L": SMA_L}
+        params_dic = {"freq": freq, "EMA_S": EMA_S, "EMA_L": EMA_L, "signal_mw": signal_mw}
         self.dataploter.store_testcase_data(self.perf_obj, params_dic)  # comb[0] is current data freq
         #self.print_performance()
 
-    def prepare_data(self, freq, SMA_S, SMA_L):  # Adj!!!
+    def prepare_data(self, freq, EMA_S, EMA_L, signal_mw):  # Adj!!!
         ''' Prepares the Data for Backtesting.
         '''
         data = self.data.Close.to_frame().copy()
@@ -67,12 +118,11 @@ class SMABacktester(VectorBacktesterBase):
         resamp = data.resample(freq).last().dropna().iloc[:-1]
 
         ######### INSERT THE STRATEGY SPECIFIC CODE HERE ##################
-
-        resamp["SMA_S"] = resamp["Close"].rolling(window=SMA_S, min_periods=SMA_S).mean()
-        resamp["SMA_L"] = resamp["Close"].rolling(window=SMA_L, min_periods=SMA_L).mean()
-
-        resamp["position"] = np.where(resamp["SMA_S"] > resamp["SMA_L"], 1, 0)
-
+        resamp["EMA_S"] = resamp["Close"].ewm(span=EMA_S, min_periods=EMA_S).mean()
+        resamp["EMA_L"] = resamp["Close"].ewm(span=EMA_L, min_periods=EMA_L).mean()
+        resamp["MACD"] = resamp.EMA_S - resamp.EMA_L
+        resamp["MACD_Signal"] = resamp.MACD.ewm(span=signal_mw, min_periods=signal_mw).mean()
+        resamp["position"] = np.where(resamp["MACD"] > resamp["MACD_Signal"], 1, 0)
         resamp["position"] = resamp.position.ffill().fillna(0)
         ###################################################################
 
@@ -80,7 +130,7 @@ class SMABacktester(VectorBacktesterBase):
         self.results = resamp
         return resamp
 
-    def optimize_strategy(self, freq_range, SMA_S_range, SMA_L_range, metric="Multiple"):  # Adj!!!
+    def optimize_strategy(self, freq_range, EMA_S_range, EMA_L_range, signal_mw_range, metric="Multiple"):  # Adj!!!
         '''
         Backtests strategy for different parameter values incl. Optimization and Reporting (Wrapper).
 
@@ -113,10 +163,10 @@ class SMABacktester(VectorBacktesterBase):
             performance_function = self.perf_obj.calculate_kelly_criterion
 
         freqs = range(*freq_range)
-        sma_s = range(*SMA_S_range)
-        sma_l = np.arange(*SMA_L_range)  # NEW!!!
-
-        combinations = list(product(freqs, sma_s, sma_l))
+        ema_s = range(*EMA_S_range)
+        ema_l = range(*EMA_L_range)  # NEW!!!
+        signal_mw = range(*signal_mw_range)
+        combinations = list(product(freqs, ema_s, ema_l, signal_mw))
         print(f"INFO: Optimizing of {self.indicator} for {self.symbol} using in total {len(combinations)} combinations..", flush=True)
         performance = []
 
@@ -125,7 +175,7 @@ class SMABacktester(VectorBacktesterBase):
 
         for comb in combinations:
             if comb[1] < comb[2]:
-                self.prepare_data(comb[0], comb[1], comb[2])
+                self.prepare_data(comb[0], comb[1], comb[2], comb[3])
                 self.upsample()
                 self.run_backtest()
                 performance.append(performance_function(self.results.strategy))
@@ -152,12 +202,3 @@ class SMABacktester(VectorBacktesterBase):
         print("Frequency: {} | EMA_S: {} | EMA_L: {} | {}: {}".format(freq, sma_s, sma_l, self.metric,
                                                                       round(perf, 6)))
         self.test_strategy(freq, sma_s, sma_l)
-
-
-if __name__ == "__main__":
-    symbol = "XRPUSDT"
-    start = ",2021-11-20"
-    end = "2022-08-20"
-    ptc = 0.00007
-    ema = SMABacktester(filepath=filepath, symbol=symbol, start=start, end=end, tc=ptc)
-    ema.optimize_strategy((1, 30, 10), (10, 30, 10), (10, 50, 10), metric="Calmar")

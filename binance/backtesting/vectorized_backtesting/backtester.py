@@ -3,7 +3,7 @@ import os
 from strategy_functions import execute_ema
 from strategy_functions import execute_sma
 from strategy_functions import execute_bb
-
+from strategy_functions import execute_macd
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
@@ -54,6 +54,9 @@ class Backtester:
                 elif strategy == "bb":
                     self.start_process(execute_bb, ticker)
                     print(f"Started bb backtesting..", flush=True)
+                elif strategy == "macd":
+                    self.start_process(execute_macd, ticker)
+                    print(f"Started macd backtesting..", flush=True)
 
         for proc in self.processes:
             proc.join()

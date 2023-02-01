@@ -39,7 +39,7 @@ class VectorBacktesterBase:
             raw.drop(columns=['Unnamed: 0'], inplace=True)
         self.data = raw
 
-        if self.start is not None and self.end is not None:
+        if len(self.start) > 0 and len(self.end) > 0:
             self.data = self.data.loc[self.start:self.end].copy()
         else:
             self.train_test_split()

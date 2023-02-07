@@ -10,6 +10,7 @@ import numpy as np
 from itertools import product
 from utilities.DataPlot import DataPlot
 from utilities.Performance import Performance
+from utilities.logger import logger
 
 
 
@@ -117,7 +118,7 @@ class SMABacktester(VectorBacktesterBase):
         sma_l = np.arange(*SMA_L_range)  # NEW!!!
 
         combinations = list(product(freqs, sma_s, sma_l))
-        print(f"INFO: Optimizing of {self.indicator} for {self.symbol} using in total {len(combinations)} combinations..", flush=True)
+        logger.info(f"sma_backtester: Optimizing of {self.indicator} for {self.symbol} using in total {len(combinations)} combinations..")
         performance = []
 
         # for data plotting

@@ -3,14 +3,19 @@ import os
 from strategies.ema_backtester import EMABacktester
 from strategies.sma_backtester import SMABacktester
 from strategies.macd_backtester import MACDBacktester
+from strategies.rsi_backtester import RSIBacktester
 
-from strategies.bb_blacktester import BBBacktester
+from strategies.bb_backtester import BBBacktester
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), ''))
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
 
+from utilities.logger import logger
+import time
+from deployment.email import Email
 
-
+email = Email()
 
 def create_ticker_output_dir(ticker):
     path = os.path.join(config.output_folder, ticker)
@@ -23,12 +28,12 @@ def get_hist_data_file(ticker):
     path = os.path.join(config.hist_data_folder, ticker, f"{ticker}.parquet.gzip")
     if not os.path.exists(path):
         # and not config.retrieve_data:
-        print(f"ERROR: Historical data are not found. Please configure retrieving data in config file.")
-        print(f"{path=}")
+        logger.error(f"strategy_functions: Path {path} for historical data not found. Configure data retrieving or provide the correct path.")
         exit(0)
     return path
 
 def execute_macd(ticker):
+    start_t = time.time()
     output_dir = create_ticker_output_dir(ticker)
     input_file = get_hist_data_file(ticker)
 
@@ -44,7 +49,12 @@ def execute_macd(ticker):
                                      metric=config.strategy_conf.metric)
 
     macd_backtester.dataploter.store_data(output_dir)
+    end_t = time.time()
+    logger.info(f"strategy_functions: Total time took for macd optimization for {ticker}: {round(((end_t - start_t)/60),2)}")
+    email.send_email(f"Finished macd for {ticker}..")
+
 def execute_ema(ticker):
+    start_t = time.time()
     output_dir = create_ticker_output_dir(ticker)
     input_file = get_hist_data_file(ticker)
 
@@ -59,9 +69,12 @@ def execute_ema(ticker):
                                      metric=config.strategy_conf.metric)
 
     ema_backtester.dataploter.store_data(output_dir)
-
+    end_t = time.time()
+    logger.info(f"strategy_functions: Total time took for ema optimization for {ticker}: {round(((end_t - start_t)/60),2)}")
+    email.send_email(f"Finished ema for {ticker}..")
 
 def execute_sma(ticker):
+    start_t = time.time()
     output_dir = create_ticker_output_dir(ticker)
     input_file = get_hist_data_file(ticker)
 
@@ -76,9 +89,13 @@ def execute_sma(ticker):
                                      metric=config.strategy_conf.metric)
 
     sma_backtester.dataploter.store_data(output_dir)
+    end_t = time.time()
+    logger.info(f"strategy_functions: Total time took for sma optimization for {ticker}: {round(((end_t - start_t)/60),2)}")
+    email.send_email(f"Finished sma for {ticker}..")
 
 
 def execute_bb(ticker):
+    start_t = time.time()
     output_dir = create_ticker_output_dir(ticker)
     input_file = get_hist_data_file(ticker)
 
@@ -93,3 +110,27 @@ def execute_bb(ticker):
                                     metric=config.strategy_conf.metric)
 
     bb_backtester.dataploter.store_data(output_dir)
+    end_t = time.time()
+    logger.info(f"strategy_functions: Total time took for bb optimization for {ticker}: {round(((end_t - start_t)/60),2)}")
+    email.send_email(f"Finished bb for {ticker}..")
+
+def execute_rsi(ticker):
+    start_t = time.time()
+    output_dir = create_ticker_output_dir(ticker)
+    input_file = get_hist_data_file(ticker)
+
+    rsi_backtester = RSIBacktester(symbol=ticker, filepath=input_file,
+                                 tc=config.ptc,
+                                 start=config.time_frame["start_date"],
+                                 end=config.time_frame["end_date"])
+
+    rsi_backtester.optimize_strategy(freq_range=config.strategy_conf.freq,
+                                    periods_range=config.strategy_conf.rsi["periods"],
+                                    rsi_lower_range=config.strategy_conf.rsi["rsi_lower"],
+                                    rsi_upper_range=config.strategy_conf.rsi["rsi_upper"],
+                                    metric=config.strategy_conf.metric)
+
+    rsi_backtester.dataploter.store_data(output_dir)
+    end_t = time.time()
+    logger.info(f"strategy_functions: Total time took for rsi optimization for {ticker}: {round(((end_t - start_t)/60),2)}")
+    email.send_email(f"Finished rsi for {ticker}..")

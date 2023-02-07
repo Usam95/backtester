@@ -13,6 +13,8 @@ import numpy as np
 from itertools import product
 
 
+from utilities.logger import logger
+
 class BBBacktester(VectorBacktesterBase):
 
         def __init__(self, filepath, symbol, tc=0.00007, dataset="training", start=None, end=None):
@@ -113,7 +115,7 @@ class BBBacktester(VectorBacktesterBase):
 
             combinations = list(product(freqs, windows, devs))
 
-            print(f"INFO: Optimizing of {self.indicator} for {self.symbol} using in total {len(combinations)} combinations..", flush=True)
+            logger.info(f"bb_backtester: Optimizing of {self.indicator} for {self.symbol} using in total {len(combinations)} combinations..")
 
             performance = []
             for comb in combinations:

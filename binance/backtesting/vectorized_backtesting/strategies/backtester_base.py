@@ -5,7 +5,7 @@ import seaborn as sns
 import os
 
 from sklearn.model_selection import train_test_split
-
+from utilities.logger import logger
 
 class VectorBacktesterBase:
     def __init__(self, filepath, symbol, tc=0.00007, start=None, end=None, dataset="training"):
@@ -41,8 +41,10 @@ class VectorBacktesterBase:
 
         if len(self.start) > 0 and len(self.end) > 0:
             self.data = self.data.loc[self.start:self.end].copy()
-        else:
-            self.train_test_split()
+
+        logger.info(f"backtester_base: Load data with {len(self.data)} samples.")
+        #else:
+        #    self.train_test_split()
 
     def train_test_split(self):
         print(f"Length bevore splitting: {len(self.data)}")

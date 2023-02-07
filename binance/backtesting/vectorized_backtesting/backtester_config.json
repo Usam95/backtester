@@ -1,13 +1,13 @@
 {
-  "tickers": ["BNBUSDT", "LTCUSDT", "XRPUSDT", "BTCUSDT", "LTCUSDT", "TRXUSDT"],
+  "tickers": ["LTCUSDT", "XRPUSDT", "BTCUSDT", "TRXUSDT"],
   "fetch_data": true,
   "split_size": 0.2,
   "hist_data_folder": "../../hist_data/",
   "output_folder": "results",
   "retrieve_data": true,
   "time_frame": {
-		"start_date": "2019-01-01",
-		"end_date": "2019-01-21"
+		"start_date": "",
+		"end_date": ""
   },
   "ptc": 0.001,
   "ml_strategy": false,
@@ -15,7 +15,11 @@
 
   "_comment": "accepted strategies: ema, sma, macd, bb, so, rsi",
   "strategies": [
-      "macd"
+      "macd",
+      "ema",
+      "sma",
+      "macd",
+      "rsi"
   ]
 }
 

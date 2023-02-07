@@ -6,6 +6,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
 
+from utilities.logger import logger
+
 from utilities.Performance import Performance
 from utilities.DataPlot import DataPlot
 
@@ -124,7 +126,7 @@ class EMABacktester(VectorBacktesterBase):
         ema_l = np.arange(*EMA_L_range)  # NEW!!!
 
         combinations = list(product(freqs, ema_s, ema_l))
-        print(f"INFO: Optimizing of {self.indicator} for {self.symbol} using in total {len(combinations)} combinations..", flush=True)
+        logger.info(f"ema_backtester: Optimizing of {self.indicator} for {self.symbol} using in total {len(combinations)} combinations..")
         performance = []
 
         # for data plotting

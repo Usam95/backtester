@@ -8,6 +8,7 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
+from utilities.logger import logger
 
 from utilities.DataPlot import DataPlot
 from utilities.Performance import Performance
@@ -167,7 +168,7 @@ class MACDBacktester(VectorBacktesterBase):
         ema_l = range(*EMA_L_range)  # NEW!!!
         signal_mw = range(*signal_mw_range)
         combinations = list(product(freqs, ema_s, ema_l, signal_mw))
-        print(f"INFO: Optimizing of {self.indicator} for {self.symbol} using in total {len(combinations)} combinations..", flush=True)
+        logger.info(f"macd_backtester: Optimizing of {self.indicator} for {self.symbol} using in total {len(combinations)} combinations..")
         performance = []
 
         # for data plotting

@@ -1,0 +1,60 @@
+2023-02-06 01:07:03,125 - INFO - backtester: Started macd backtesting LTCUSDT..
+2023-02-06 01:07:03,129 - INFO - backtester: Started ema backtesting for LTCUSDT..
+2023-02-06 01:07:03,132 - INFO - backtester: Started sma backtesting LTCUSDT..
+2023-02-06 01:07:03,135 - INFO - backtester: Started macd backtesting LTCUSDT..
+2023-02-06 01:07:03,138 - INFO - backtester: Started rsi backtesting LTCUSDT..
+2023-02-06 01:07:03,142 - INFO - backtester: Started macd backtesting XRPUSDT..
+2023-02-06 01:07:03,150 - INFO - backtester: Started ema backtesting for XRPUSDT..
+2023-02-06 01:07:03,154 - INFO - backtester: Started sma backtesting XRPUSDT..
+2023-02-06 01:07:03,161 - INFO - backtester: Started macd backtesting XRPUSDT..
+2023-02-06 01:07:03,171 - INFO - backtester: Started rsi backtesting XRPUSDT..
+2023-02-06 01:07:03,180 - INFO - backtester: Started macd backtesting BTCUSDT..
+2023-02-06 01:07:03,185 - INFO - backtester: Started ema backtesting for BTCUSDT..
+2023-02-06 01:07:03,193 - INFO - backtester: Started sma backtesting BTCUSDT..
+2023-02-06 01:07:03,199 - INFO - backtester: Started macd backtesting BTCUSDT..
+2023-02-06 01:07:03,208 - INFO - backtester: Started rsi backtesting BTCUSDT..
+2023-02-06 01:07:03,216 - INFO - backtester: Started macd backtesting TRXUSDT..
+2023-02-06 01:07:03,227 - INFO - backtester: Started ema backtesting for TRXUSDT..
+2023-02-06 01:07:03,232 - INFO - backtester: Started sma backtesting TRXUSDT..
+2023-02-06 01:07:03,238 - INFO - backtester: Started macd backtesting TRXUSDT..
+2023-02-06 01:07:03,244 - INFO - backtester: Started rsi backtesting TRXUSDT..
+2023-02-06 01:07:10,641 - INFO - backtester_base: Load data with 2308949 samples.
+2023-02-06 01:07:10,640 - INFO - backtester_base: Load data with 2308949 samples.
+2023-02-06 01:07:10,906 - INFO - backtester_base: Load data with 2371068 samples.
+2023-02-06 01:07:10,947 - INFO - backtester_base: Load data with 2308949 samples.
+2023-02-06 01:07:11,555 - INFO - sma_backtester: Optimizing of SMA for TRXUSDT using in total 2800 combinations..
+2023-02-06 01:07:12,435 - INFO - backtester_base: Load data with 2308949 samples.
+2023-02-06 01:07:12,898 - INFO - backtester_base: Load data with 2308949 samples.
+2023-02-06 01:07:13,109 - INFO - backtester_base: Load data with 2371068 samples.
+2023-02-06 01:07:13,179 - INFO - backtester_base: Load data with 2371068 samples.
+2023-02-06 01:07:13,191 - INFO - ema_backtester: Optimizing of EMA for TRXUSDT using in total 2800 combinations..
+2023-02-06 01:07:13,289 - INFO - sma_backtester: Optimizing of SMA for XRPUSDT using in total 2800 combinations..
+2023-02-06 01:07:13,338 - INFO - backtester_base: Load data with 2371068 samples.
+2023-02-06 01:07:13,459 - INFO - ema_backtester: Optimizing of EMA for XRPUSDT using in total 2800 combinations..
+2023-02-06 01:07:13,559 - INFO - backtester_base: Load data with 2566365 samples.
+2023-02-06 01:07:13,611 - INFO - sma_backtester: Optimizing of SMA for LTCUSDT using in total 2800 combinations..
+2023-02-06 01:07:13,723 - INFO - rsi_backtester: Optimizing of EMA for TRXUSDT using in total 11760 combinations..
+2023-02-06 01:07:13,702 - INFO - backtester_base: Load data with 2734349 samples.
+2023-02-06 01:07:13,804 - INFO - backtester_base: Load data with 2371068 samples.
+2023-02-06 01:07:13,815 - INFO - backtester_base: Load data with 2566365 samples.
+2023-02-06 01:07:13,820 - INFO - backtester_base: Load data with 2566365 samples.
+2023-02-06 01:07:13,824 - INFO - backtester_base: Load data with 2566365 samples.
+2023-02-06 01:07:13,846 - INFO - macd_backtester: Optimizing of MACD for TRXUSDT using in total 17640 combinations..
+2023-02-06 01:07:13,873 - INFO - macd_backtester: Optimizing of MACD for XRPUSDT using in total 17640 combinations..
+2023-02-06 01:07:13,846 - INFO - backtester_base: Load data with 2566365 samples.
+2023-02-06 01:07:13,855 - INFO - backtester_base: Load data with 2734349 samples.
+2023-02-06 01:07:13,837 - INFO - backtester_base: Load data with 2734349 samples.
+2023-02-06 01:07:13,916 - INFO - macd_backtester: Optimizing of MACD for TRXUSDT using in total 17640 combinations..
+2023-02-06 01:07:13,899 - INFO - backtester_base: Load data with 2734349 samples.
+2023-02-06 01:07:13,928 - INFO - backtester_base: Load data with 2734349 samples.
+2023-02-06 01:07:14,120 - INFO - ema_backtester: Optimizing of EMA for LTCUSDT using in total 2800 combinations..
+2023-02-06 01:07:14,164 - INFO - sma_backtester: Optimizing of SMA for BTCUSDT using in total 2800 combinations..
+2023-02-06 01:07:14,202 - INFO - ema_backtester: Optimizing of EMA for BTCUSDT using in total 2800 combinations..
+2023-02-06 01:07:15,666 - INFO - macd_backtester: Optimizing of MACD for XRPUSDT using in total 17640 combinations..
+2023-02-06 01:07:15,887 - INFO - rsi_backtester: Optimizing of EMA for XRPUSDT using in total 11760 combinations..
+2023-02-06 01:07:16,048 - INFO - macd_backtester: Optimizing of MACD for LTCUSDT using in total 17640 combinations..
+2023-02-06 01:07:16,248 - INFO - macd_backtester: Optimizing of MACD for LTCUSDT using in total 17640 combinations..
+2023-02-06 01:07:16,301 - INFO - rsi_backtester: Optimizing of EMA for LTCUSDT using in total 11760 combinations..
+2023-02-06 01:07:16,347 - INFO - macd_backtester: Optimizing of MACD for BTCUSDT using in total 17640 combinations..
+2023-02-06 01:07:16,527 - INFO - rsi_backtester: Optimizing of EMA for BTCUSDT using in total 11760 combinations..
+2023-02-06 01:07:16,537 - INFO - macd_backtester: Optimizing of MACD for BTCUSDT using in total 17640 combinations..

@@ -16,6 +16,14 @@ class Performance:
             self.returns = self.data.returns
             self.tp_year = 1    # default value for number of years
 
+        self.performance_functions = {
+            "Multiple": self.calculate_multiple,
+            "Sharpe": self.calculate_sharpe,
+            "Sortino": self.calculate_sortino,
+            "Calmar": self.calculate_calmar,
+            "Kelly": self.calculate_kelly_criterion
+        }
+
     def calculate_tp_year(self):
         timeframe_in_days = (self.data.index[-1] - self.data.index[0]).days
         if timeframe_in_days > 0:
@@ -103,8 +111,10 @@ class Performance:
         return np.exp(series.sum())
 
     def calculate_cagr(self, series):
-        return np.exp(series.sum()) ** (1 / ((series.index[-1] - series.index[0]).days / 365.25)) - 1
-
+        if (series.index[-1] - series.index[0]).days > 0:
+            return np.exp(series.sum()) ** (1 / ((series.index[-1] - series.index[0]).days / 365.25)) - 1
+        else:
+            return 1
     def calculate_annualized_mean(self, series):
         return series.mean() * self.tp_year
 

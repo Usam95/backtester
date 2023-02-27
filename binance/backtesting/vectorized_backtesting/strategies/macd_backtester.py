@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from scipy.optimize import brute
 import os
 import sys
-
+from tqdm import tqdm
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
@@ -111,27 +111,46 @@ class MACDBacktester(VectorBacktesterBase):
         self.dataploter.store_testcase_data(self.perf_obj, params_dic)  # comb[0] is current data freq
         #self.print_performance()
 
-    def prepare_data(self, freq, EMA_S, EMA_L, signal_mw):  # Adj!!!
+
+    def prepare_data(self, freq, ema_s_val, ema_l_val, signal_mw):
+        ''' Prepares the Data for Backtesting.
+           '''
+        freq = f"{freq}min"
+        data_resampled = self.data.resample(freq).last().dropna().iloc[:-1].copy()
+        data_resampled["returns"] = np.log(1 + data_resampled.Close.pct_change())
+        data_resampled.dropna()
+        ######### INSERT THE STRATEGY SPECIFIC CODE HERE ##################
+
+        ema_s = data_resampled["Close"].ewm(span=ema_s_val-1, min_periods=ema_s_val).mean()
+        ema_l = data_resampled["Close"].ewm(span=ema_l_val-1, min_periods=ema_l_val).mean()
+        macd = (ema_s - ema_l)
+        macd_signal = macd.ewm(span=signal_mw, min_periods=signal_mw).mean()
+        position = np.where(macd > macd_signal, 1, 0) \
+            #(macd > macd_signal).astype(int).ffill().fillna(0)
+        ###################################################################
+        data_resampled = data_resampled.assign(position=position).dropna()
+        self.results = data_resampled
+
+
+    def prepare_data(self, freq, ema_s_val, ema_l_val, signal_mw):  # Adj!!!
         ''' Prepares the Data for Backtesting.
         '''
-        data = self.data.Close.to_frame().copy()
-        freq = "{}min".format(freq)
-        resamp = data.resample(freq).last().dropna().iloc[:-1]
-
+        freq = f"{freq}min"
+        data_resampled = self.data.resample(freq).last().dropna().iloc[:-1].copy()
+        data_resampled["returns"] = np.log(1 + data_resampled.Close.pct_change())
+        data_resampled.dropna()
         ######### INSERT THE STRATEGY SPECIFIC CODE HERE ##################
-        resamp["EMA_S"] = resamp["Close"].ewm(span=EMA_S, min_periods=EMA_S).mean()
-        resamp["EMA_L"] = resamp["Close"].ewm(span=EMA_L, min_periods=EMA_L).mean()
-        resamp["MACD"] = resamp.EMA_S - resamp.EMA_L
-        resamp["MACD_Signal"] = resamp.MACD.ewm(span=signal_mw, min_periods=signal_mw).mean()
-        resamp["position"] = np.where(resamp["MACD"] > resamp["MACD_Signal"], 1, 0)
-        resamp["position"] = resamp.position.ffill().fillna(0)
+
+        ema_s = data_resampled["Close"].ewm(span=ema_s_val - 1, min_periods=ema_s_val).mean()
+        ema_l = data_resampled["Close"].ewm(span=ema_l_val - 1, min_periods=ema_l_val).mean()
+        macd = (ema_s - ema_l)
+        macd_signal = macd.ewm(span=signal_mw, min_periods=signal_mw).mean()
+        position = np.where(macd > macd_signal, 1, 0)#.astype(int).ffill().fillna(0)
         ###################################################################
+        data_resampled = data_resampled.assign(position=position).dropna()
+        self.results = data_resampled
 
-        resamp.dropna(inplace=True)
-        self.results = resamp
-        return resamp
-
-    def optimize_strategy(self, freq_range, EMA_S_range, EMA_L_range, signal_mw_range, metric="Multiple"):  # Adj!!!
+    def optimize_strategy(self, freq_range, ema_s_range, ema_l_range, signal_mw_range, metric="Multiple"):  # Adj!!!
         '''
         Backtests strategy for different parameter values incl. Optimization and Reporting (Wrapper).
 
@@ -150,47 +169,34 @@ class MACDBacktester(VectorBacktesterBase):
             performance metric to be optimized (can be: "Multiple", "Sharpe", "Sortino", "Calmar", "Kelly")
         '''
 
-        self.metric = metric
-
-        if metric == "Multiple":
-            performance_function = self.perf_obj.calculate_multiple
-        elif metric == "Sharpe":
-            performance_function = self.perf_obj.calculate_sharpe
-        elif metric == "Sortino":
-            performance_function = self.perf_obj.calculate_sortino
-        elif metric == "Calmar":
-            performance_function = self.perf_obj.calculate_calmar
-        elif metric == "Kelly":
-            performance_function = self.perf_obj.calculate_kelly_criterion
+        self.data = self.data.loc[:, ["Close"]]
+        # performance_function = self.perf_obj.performance_functions[metric]
 
         freqs = range(*freq_range)
-        ema_s = range(*EMA_S_range)
-        ema_l = range(*EMA_L_range)  # NEW!!!
-        signal_mw = range(*signal_mw_range)
-        combinations = list(product(freqs, ema_s, ema_l, signal_mw))
+        ema_s_range = range(*ema_s_range)
+        ema_l_range = range(*ema_l_range)  # NEW!!!
+        signal_mw_range = range(*signal_mw_range)
+        ema_pairs = [(ema_s, ema_l) for ema_s in ema_s_range for ema_l in ema_l_range if ema_l > ema_s and (ema_l - ema_s) >= 10]
+
+        combinations = list(product(freqs, ema_pairs, signal_mw_range))
+        #combinations = list(product(freqs, ema_s, ema_l, signal_mw))
+        #combinations = [(_, ema_s, ema_l, _) for (_, ema_s, ema_l, _) in combinations if ema_l > ema_s]
         logger.info(f"macd_backtester: Optimizing of {self.indicator} for {self.symbol} using in total {len(combinations)} combinations..")
-        performance = []
+        #performance = []
 
         # for data plotting
-        #self.strategy_df = pd.DataFrame()
-
-        for comb in combinations:
-            if comb[1] < comb[2]:
-                self.prepare_data(comb[0], comb[1], comb[2], comb[3])
+        for (freq, (ema_s, ema_l), signal_mw) in tqdm(combinations):
+            self.prepare_data(freq, ema_s, ema_l, signal_mw)
+            if metric != "Multiple":
                 self.upsample()
-                self.run_backtest()
-                performance.append(performance_function(self.results.strategy))
-                # set strategy data and calculate performance
-                self.perf_obj.set_data(self.results)
-                self.perf_obj.calculate_performance()
-                # store strategy performance data for further plotting
-                params_dic = {"freq":comb[0], "SMA_S":comb[1], "SMA_L":comb[2]}
-                self.dataploter.store_testcase_data(self.perf_obj, params_dic) # comb[0] is current data freq
-
-        #self.results_overview = pd.DataFrame(data=np.array(combinations),
-        #                                     columns=["Freq", "EMA_S", "EMA_L"])
-        #self.results_overview["Performance"] = performance
-        #self.find_best_strategy()
+            self.run_backtest()
+            #performance.append(performance_function(self.results.strategy))
+            # set strategy data and calculate performance
+            self.perf_obj.set_data(self.results)
+            self.perf_obj.calculate_performance()
+            # store strategy performance data for further plotting
+            params_dic = {"freq": freq, "SMA_S": ema_s, "SMA_L": ema_l, "Signal_Mw": signal_mw}
+            self.dataploter.store_testcase_data(self.perf_obj, params_dic)
 
     def find_best_strategy(self):
         ''' Finds the optimal strategy (global maximum) given the parameter ranges.

@@ -1,0 +1,176 @@
+2023-02-24 14:25:41,393 - INFO - backtester: Started rsi backtesting XRPUSDT..
+2023-02-24 14:25:47,045 - INFO - backtester_base: Load data with 86171 samples.
+2023-02-24 14:25:47,050 - INFO - rsi_backtester: Optimizing of EMA for XRPUSDT using in total 280 combinations..
+2023-02-24 14:25:59,847 - INFO - strategy_functions: Total time took for rsi optimization for XRPUSDT: 0.26
+2023-02-24 14:48:48,256 - INFO - backtester: Started rsi backtesting XRPUSDT..
+2023-02-24 14:48:51,573 - INFO - backtester_base: Load data with 86171 samples.
+2023-02-24 14:48:51,578 - INFO - rsi_backtester: Optimizing of EMA for XRPUSDT using in total 280 combinations..
+2023-02-24 14:49:04,304 - INFO - strategy_functions: Total time took for rsi optimization for XRPUSDT: 0.22
+2023-02-24 15:51:39,429 - INFO - backtester: Started rsi backtesting XRPUSDT..
+2023-02-24 15:51:42,584 - INFO - backtester_base: Load data with 86171 samples.
+2023-02-24 15:51:42,590 - INFO - rsi_backtester: Optimizing of RSI for XRPUSDT using in total 11760 combinations..
+2023-02-24 15:52:18,391 - INFO - backtester: Started rsi backtesting XRPUSDT..
+2023-02-24 15:52:21,371 - INFO - backtester_base: Load data with 2371068 samples.
+2023-02-24 15:52:21,377 - INFO - rsi_backtester: Optimizing of RSI for XRPUSDT using in total 11760 combinations..
+2023-02-24 15:53:47,720 - INFO - backtester: Started rsi backtesting XRPUSDT..
+2023-02-24 15:53:50,841 - INFO - backtester_base: Load data with 45469 samples.
+2023-02-24 15:53:50,847 - INFO - rsi_backtester: Optimizing of RSI for XRPUSDT using in total 11760 combinations..
+2023-02-24 16:02:00,864 - INFO - backtester: Started rsi backtesting XRPUSDT..
+2023-02-24 16:02:03,805 - INFO - backtester_base: Load data with 2371067 samples.
+2023-02-24 16:02:03,812 - INFO - rsi_backtester: Optimizing of RSI for XRPUSDT using in total 11760 combinations..
+2023-02-24 16:04:05,739 - INFO - backtester: Started rsi backtesting XRPUSDT..
+2023-02-24 16:04:08,724 - INFO - backtester_base: Load data with 2371067 samples.
+2023-02-24 16:04:08,731 - INFO - rsi_backtester: Optimizing of RSI for XRPUSDT using in total 11760 combinations..
+2023-02-24 16:05:02,334 - INFO - backtester: Started rsi backtesting XRPUSDT..
+2023-02-24 16:05:05,279 - INFO - backtester_base: Load data with 2371067 samples.
+2023-02-24 16:05:05,285 - INFO - rsi_backtester: Optimizing of RSI for XRPUSDT using in total 11760 combinations..
+2023-02-24 16:05:38,839 - INFO - backtester: Started rsi backtesting XRPUSDT..
+2023-02-24 16:05:41,815 - INFO - backtester_base: Load data with 2371067 samples.
+2023-02-24 16:05:41,821 - INFO - rsi_backtester: Optimizing of RSI for XRPUSDT using in total 11760 combinations..
+2023-02-24 16:07:28,736 - INFO - backtester: Started rsi backtesting XRPUSDT..
+2023-02-24 16:07:31,731 - INFO - backtester_base: Load data with 2371067 samples.
+2023-02-24 16:07:31,737 - INFO - rsi_backtester: Optimizing of RSI for XRPUSDT using in total 11760 combinations..
+2023-02-24 17:37:52,466 - ERROR - ERROR: provided historical data folder ../../../hist_data/ is not found
+2023-02-24 17:38:19,422 - ERROR - ERROR: provided historical data folder ../../../hist_data/ is not found
+2023-02-24 18:09:40,795 - INFO - backtester: Started ema backtesting for XRPUSDT..
+2023-02-24 18:09:44,017 - INFO - backtester_base: Load data with 2371067 samples.
+2023-02-24 18:09:44,023 - INFO - ema_backtester: Optimizing of EMA for XRPUSDT using in total 400 combinations..
+2023-02-24 18:11:06,085 - INFO - backtester: Started ema backtesting for XRPUSDT..
+2023-02-24 18:11:09,222 - INFO - backtester_base: Load data with 2371067 samples.
+2023-02-24 18:11:09,228 - INFO - ema_backtester: Optimizing of EMA for XRPUSDT using in total 400 combinations..
+2023-02-24 18:14:27,993 - INFO - strategy_functions: Total time took for ema optimization for XRPUSDT: 3.32 mins
+2023-02-25 18:42:16,483 - INFO - backtester: Started rsi backtesting XRPUSDT..
+2023-02-25 18:42:19,761 - INFO - backtester_base: Load data with 2371067 samples.
+2023-02-25 18:42:19,777 - INFO - rsi_backtester: Optimizing of RSI for XRPUSDT using in total 40 combinations..
+2023-02-25 18:42:40,787 - INFO - strategy_functions: Total time took for rsi optimization for XRPUSDT: 0.35 mins
+2023-02-25 19:52:36,022 - INFO - backtester: Started rsi backtesting XRPUSDT..
+2023-02-25 19:52:39,294 - INFO - backtester_base: Load data with 132758 samples.
+2023-02-25 19:52:39,294 - INFO - rsi_backtester: Optimizing of RSI for XRPUSDT using in total 40 combinations..
+2023-02-25 19:52:40,118 - INFO - strategy_functions: Total time took for rsi optimization for XRPUSDT: 0.02 mins
+2023-02-25 23:24:10,451 - INFO - backtester: Started rsi backtesting XRPUSDT..
+2023-02-25 23:24:13,525 - INFO - backtester_base: Load data with 132758 samples.
+2023-02-25 23:24:13,525 - INFO - rsi_backtester: Optimizing of RSI for XRPUSDT using in total 40 combinations..
+2023-02-25 23:26:47,315 - INFO - backtester: Started rsi backtesting XRPUSDT..
+2023-02-25 23:26:50,297 - INFO - backtester_base: Load data with 132758 samples.
+2023-02-25 23:26:50,297 - INFO - rsi_backtester: Optimizing of RSI for XRPUSDT using in total 40 combinations..
+2023-02-25 23:27:16,795 - INFO - backtester: Started rsi backtesting XRPUSDT..
+2023-02-25 23:27:19,802 - INFO - backtester_base: Load data with 132758 samples.
+2023-02-25 23:27:19,802 - INFO - rsi_backtester: Optimizing of RSI for XRPUSDT using in total 40 combinations..
+2023-02-25 23:27:47,067 - INFO - backtester: Started rsi backtesting XRPUSDT..
+2023-02-25 23:27:50,068 - INFO - backtester_base: Load data with 132758 samples.
+2023-02-25 23:27:50,068 - INFO - rsi_backtester: Optimizing of RSI for XRPUSDT using in total 40 combinations..
+2023-02-25 23:28:21,127 - INFO - backtester: Started rsi backtesting XRPUSDT..
+2023-02-25 23:28:24,113 - INFO - backtester_base: Load data with 132758 samples.
+2023-02-25 23:28:24,113 - INFO - rsi_backtester: Optimizing of RSI for XRPUSDT using in total 40 combinations..
+2023-02-25 23:44:49,206 - INFO - backtester: Started rsi backtesting XRPUSDT..
+2023-02-25 23:44:52,199 - INFO - backtester_base: Load data with 132758 samples.
+2023-02-25 23:44:52,199 - INFO - rsi_backtester: Optimizing of RSI for XRPUSDT using in total 40 combinations..
+2023-02-25 23:45:44,006 - INFO - backtester: Started rsi backtesting XRPUSDT..
+2023-02-25 23:45:47,014 - INFO - backtester_base: Load data with 132758 samples.
+2023-02-25 23:45:47,014 - INFO - rsi_backtester: Optimizing of RSI for XRPUSDT using in total 40 combinations..
+2023-02-26 00:19:11,444 - INFO - backtester: Started rsi backtesting XRPUSDT..
+2023-02-26 00:19:14,410 - INFO - backtester_base: Load data with 132758 samples.
+2023-02-26 00:19:39,612 - INFO - backtester: Started rsi backtesting XRPUSDT..
+2023-02-26 00:19:42,591 - INFO - backtester_base: Load data with 132758 samples.
+2023-02-26 00:20:20,374 - INFO - backtester: Started rsi backtesting XRPUSDT..
+2023-02-26 00:20:23,394 - INFO - backtester_base: Load data with 132758 samples.
+2023-02-26 00:20:23,394 - INFO - rsi_backtester: Optimizing of RSI for XRPUSDT using in total 40 combinations..
+2023-02-26 00:21:17,063 - INFO - backtester: Started rsi backtesting XRPUSDT..
+2023-02-26 00:21:20,085 - INFO - backtester_base: Load data with 132758 samples.
+2023-02-26 00:21:20,085 - INFO - rsi_backtester: Optimizing of RSI for XRPUSDT using in total 40 combinations..
+2023-02-26 00:21:20,731 - INFO - strategy_functions: Total time took for rsi optimization for XRPUSDT: 0.01 mins
+2023-02-26 00:22:02,774 - INFO - backtester: Started rsi backtesting XRPUSDT..
+2023-02-26 00:22:05,806 - INFO - backtester_base: Load data with 132758 samples.
+2023-02-26 00:22:05,806 - INFO - rsi_backtester: Optimizing of RSI for XRPUSDT using in total 40 combinations..
+2023-02-26 00:22:06,461 - INFO - strategy_functions: Total time took for rsi optimization for XRPUSDT: 0.01 mins
+2023-02-26 00:53:33,405 - INFO - backtester: Started rsi backtesting XRPUSDT..
+2023-02-26 00:53:36,391 - INFO - backtester_base: Load data with 132758 samples.
+2023-02-26 00:53:36,398 - INFO - rsi_backtester: Optimizing of RSI for XRPUSDT using in total 40 combinations..
+2023-02-26 00:53:36,862 - INFO - strategy_functions: Total time took for rsi optimization for XRPUSDT: 0.01 mins
+2023-02-26 00:55:47,828 - INFO - backtester: Started rsi backtesting XRPUSDT..
+2023-02-26 00:55:50,867 - INFO - backtester_base: Load data with 132758 samples.
+2023-02-26 00:55:50,867 - INFO - rsi_backtester: Optimizing of RSI for XRPUSDT using in total 40 combinations..
+2023-02-26 00:55:51,321 - INFO - strategy_functions: Total time took for rsi optimization for XRPUSDT: 0.01 mins
+2023-02-26 00:59:45,915 - INFO - backtester: Started rsi backtesting XRPUSDT..
+2023-02-26 00:59:48,992 - INFO - backtester_base: Load data with 132758 samples.
+2023-02-26 00:59:48,992 - INFO - rsi_backtester: Optimizing of RSI for XRPUSDT using in total 40 combinations..
+2023-02-26 00:59:49,455 - INFO - strategy_functions: Total time took for rsi optimization for XRPUSDT: 0.01 mins
+2023-02-26 01:02:47,038 - INFO - backtester: Started rsi backtesting XRPUSDT..
+2023-02-26 01:02:50,099 - INFO - backtester_base: Load data with 132758 samples.
+2023-02-26 01:02:50,099 - INFO - rsi_backtester: Optimizing of RSI for XRPUSDT using in total 40 combinations..
+2023-02-26 01:02:50,600 - INFO - strategy_functions: Total time took for rsi optimization for XRPUSDT: 0.01 mins
+2023-02-26 01:05:47,755 - INFO - backtester: Started rsi backtesting XRPUSDT..
+2023-02-26 01:05:50,701 - INFO - backtester_base: Load data with 2371067 samples.
+2023-02-26 01:05:50,716 - INFO - rsi_backtester: Optimizing of RSI for XRPUSDT using in total 12005 combinations..
+2023-02-26 02:20:54,959 - INFO - strategy_functions: Total time took for rsi optimization for XRPUSDT: 75.07 mins
+2023-02-26 09:59:22,350 - INFO - backtester: Started ema backtesting for XRPUSDT..
+2023-02-26 09:59:25,348 - INFO - backtester_base: Load data with 132758 samples.
+2023-02-26 09:59:25,348 - INFO - ema_backtester: Optimizing of EMA for XRPUSDT using in total 2800 combinations..
+2023-02-26 10:02:25,039 - INFO - backtester: Started ema backtesting for XRPUSDT..
+2023-02-26 10:02:28,001 - INFO - backtester_base: Load data with 132758 samples.
+2023-02-26 10:02:28,001 - INFO - ema_backtester: Optimizing of EMA for XRPUSDT using in total 2800 combinations..
+2023-02-26 10:02:53,332 - INFO - strategy_functions: Total time took for ema optimization for XRPUSDT: 0.42 mins
+2023-02-26 11:14:12,563 - INFO - backtester: Started ema backtesting for XRPUSDT..
+2023-02-26 11:14:15,489 - INFO - backtester_base: Load data with 2371067 samples.
+2023-02-26 11:14:15,505 - INFO - ema_backtester: Optimizing of EMA for XRPUSDT using in total 2800 combinations..
+2023-02-26 11:21:40,117 - INFO - backtester: Started ema backtesting for XRPUSDT..
+2023-02-26 11:21:43,046 - INFO - backtester_base: Load data with 2371067 samples.
+2023-02-26 11:21:43,052 - INFO - ema_backtester: Optimizing of EMA for XRPUSDT using in total 2800 combinations..
+2023-02-26 11:37:07,407 - INFO - strategy_functions: Total time took for ema optimization for XRPUSDT: 15.41 mins
+2023-02-26 12:45:22,718 - INFO - backtester: Started ema backtesting for XRPUSDT..
+2023-02-26 12:45:55,461 - INFO - backtester: Started ema backtesting for XRPUSDT..
+2023-02-26 12:45:58,406 - INFO - backtester_base: Load data with 2371067 samples.
+2023-02-26 12:45:58,422 - INFO - ema_backtester: Optimizing of EMA for XRPUSDT using in total 210 combinations..
+2023-02-26 12:47:07,199 - INFO - strategy_functions: Total time took for ema optimization for XRPUSDT: 1.15 mins
+2023-02-26 15:24:10,280 - INFO - backtester: Started ema backtesting for XRPUSDT..
+2023-02-26 15:24:13,249 - INFO - backtester_base: Load data with 2371067 samples.
+2023-02-26 15:24:13,256 - INFO - ema_backtester: Optimizing of EMA for XRPUSDT using in total 210 combinations..
+2023-02-26 15:25:23,654 - INFO - strategy_functions: Total time took for ema optimization for XRPUSDT: 1.18 mins
+2023-02-26 15:26:25,793 - INFO - backtester: Started ema backtesting for XRPUSDT..
+2023-02-26 15:26:28,753 - INFO - backtester_base: Load data with 2371067 samples.
+2023-02-26 15:26:28,768 - INFO - ema_backtester: Optimizing of EMA for XRPUSDT using in total 2800 combinations..
+2023-02-26 15:42:04,345 - INFO - strategy_functions: Total time took for ema optimization for XRPUSDT: 15.6 mins
+2023-02-26 17:09:40,950 - INFO - backtester: Started macd backtesting XRPUSDT..
+2023-02-26 17:09:44,088 - INFO - backtester_base: Load data with 2371067 samples.
+2023-02-26 17:09:44,104 - INFO - macd_backtester: Optimizing of MACD for XRPUSDT using in total 14700 combinations..
+2023-02-26 17:10:24,376 - INFO - backtester: Started macd backtesting XRPUSDT..
+2023-02-26 17:10:27,432 - INFO - backtester_base: Load data with 2371067 samples.
+2023-02-26 17:10:27,447 - INFO - macd_backtester: Optimizing of MACD for XRPUSDT using in total 14700 combinations..
+2023-02-26 17:11:41,223 - INFO - backtester: Started macd backtesting XRPUSDT..
+2023-02-26 17:11:44,253 - INFO - backtester_base: Load data with 2371067 samples.
+2023-02-26 17:11:44,268 - INFO - macd_backtester: Optimizing of MACD for XRPUSDT using in total 14700 combinations..
+2023-02-26 17:12:32,246 - INFO - backtester: Started macd backtesting XRPUSDT..
+2023-02-26 17:12:35,228 - INFO - backtester_base: Load data with 2371067 samples.
+2023-02-26 17:12:35,250 - INFO - macd_backtester: Optimizing of MACD for XRPUSDT using in total 14700 combinations..
+2023-02-26 17:13:32,003 - INFO - backtester: Started macd backtesting XRPUSDT..
+2023-02-26 17:13:35,095 - INFO - backtester_base: Load data with 2371067 samples.
+2023-02-26 17:13:35,110 - INFO - macd_backtester: Optimizing of MACD for XRPUSDT using in total 14700 combinations..
+2023-02-26 18:12:12,418 - INFO - backtester: Started bb backtesting XRPUSDT..
+2023-02-26 18:12:15,685 - INFO - backtester_base: Load data with 2371067 samples.
+2023-02-26 18:12:15,692 - INFO - bb_backtester: Optimizing of BB for XRPUSDT using in total 1400 combinations..
+2023-02-26 18:13:34,655 - INFO - backtester: Started bb backtesting XRPUSDT..
+2023-02-26 18:13:37,913 - INFO - backtester_base: Load data with 2371067 samples.
+2023-02-26 18:13:37,929 - INFO - bb_backtester: Optimizing of BB for XRPUSDT using in total 1400 combinations..
+2023-02-26 18:15:44,040 - INFO - backtester: Started bb backtesting XRPUSDT..
+2023-02-26 18:15:47,381 - INFO - backtester_base: Load data with 2371067 samples.
+2023-02-26 18:15:47,396 - INFO - bb_backtester: Optimizing of BB for XRPUSDT using in total 1400 combinations..
+2023-02-26 18:16:05,103 - INFO - backtester: Started bb backtesting XRPUSDT..
+2023-02-26 18:16:08,564 - INFO - backtester_base: Load data with 2371067 samples.
+2023-02-26 18:16:08,580 - INFO - bb_backtester: Optimizing of BB for XRPUSDT using in total 1400 combinations..
+2023-02-26 18:16:43,329 - INFO - backtester: Started bb backtesting XRPUSDT..
+2023-02-26 18:16:46,882 - INFO - backtester_base: Load data with 2371067 samples.
+2023-02-26 18:16:46,897 - INFO - bb_backtester: Optimizing of BB for XRPUSDT using in total 1400 combinations..
+2023-02-26 18:17:50,741 - INFO - backtester: Started bb backtesting XRPUSDT..
+2023-02-26 18:17:54,102 - INFO - backtester_base: Load data with 2371067 samples.
+2023-02-26 18:17:54,119 - INFO - bb_backtester: Optimizing of BB for XRPUSDT using in total 1400 combinations..
+2023-02-26 18:26:49,326 - INFO - strategy_functions: Total time took for bb optimization for XRPUSDT: 8.92 mins
+2023-02-26 18:43:32,266 - INFO - strategy_functions: Total time took for macd optimization for XRPUSDT: 89.96 mins
+2023-02-26 19:45:02,657 - INFO - backtester: Started macd backtesting XRPUSDT..
+2023-02-26 19:45:05,713 - INFO - backtester_base: Load data with 2371067 samples.
+2023-02-26 19:45:05,713 - INFO - macd_backtester: Optimizing of MACD for XRPUSDT using in total 105 combinations..
+2023-02-26 19:47:45,376 - INFO - backtester: Started macd backtesting XRPUSDT..
+2023-02-26 19:47:48,927 - INFO - backtester_base: Load data with 2371067 samples.
+2023-02-26 19:48:16,796 - INFO - backtester: Started macd backtesting XRPUSDT..
+2023-02-26 19:48:19,795 - INFO - backtester_base: Load data with 2371067 samples.
+2023-02-26 19:48:19,810 - INFO - macd_backtester: Optimizing of MACD for XRPUSDT using in total 13720 combinations..
+2023-02-26 21:06:05,049 - INFO - strategy_functions: Total time took for macd optimization for XRPUSDT: 77.76 mins

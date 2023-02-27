@@ -1,6 +1,6 @@
 import os
 import sys
-
+from tqdm import tqdm
 sys.path.append(os.path.join(os.path.dirname(__file__), '.'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
@@ -20,11 +20,11 @@ from utilities.logger import logger
 
 class RSIBacktester(VectorBacktesterBase):
 
-    def __init__(self, filepath, symbol, tc=0.00007, dataset="training", start=None, end=None):
+    def __init__(self, filepath, symbol, tc=0.00007, dataset="training", multiple_only=True, start=None, end=None):
         super().__init__(filepath=filepath, symbol=symbol, start=start, end=end, tc=tc, dataset=dataset)
-        self.indicator = "EMA"
-        self.perf_obj = Performance(symbol=symbol)
-        self.dataploter = DataPlot(dataset, self.indicator, self.symbol)
+        self.indicator = "RSI"
+        self.perf_obj = Performance(symbol=symbol, multiple_only=multiple_only)
+        self.dataploter = DataPlot(dataset, self.indicator, symbol)
 
     def test_strategy(self, freq=5,  periods=None, rsi_upper=None, rsi_lower=None):  # Adj!!!
         '''
@@ -47,82 +47,76 @@ class RSIBacktester(VectorBacktesterBase):
         self.rsi_lower = rsi_lower
 
         self.prepare_data(freq, periods, rsi_lower, rsi_upper)
-        self.upsample()
+        #self.upsample()
         self.run_backtest()
 
-        data = self.results.copy()
-        data["creturns"] = data["returns"].cumsum().apply(np.exp)
-        data["cstrategy"] = data["strategy"].cumsum().apply(np.exp)
+        #data = self.results.copy()
+        #data["creturns"] = data["returns"].cumsum().apply(np.exp)
+        #data["cstrategy"] = data["strategy"].cumsum().apply(np.exp)
 
-        data["strategy_net"] = data.strategy - data.trades * ptc
-        data["cstrategy_net"] = data.strategy_net.cumsum().apply(np.exp)
+        #data["strategy_net"] = data.strategy - data.trades * ptc
+        #data["cstrategy_net"] = data.strategy_net.cumsum().apply(np.exp)
 
-        self.results = data
+        #self.results = data
 
         # store the test results in the dataframe
         # set strategy data and calculate performance
-        self.perf_obj.set_data(self.results)
-        self.perf_obj.calculate_performance()
+        #self.perf_obj.set_data(self.results)
+        #self.perf_obj.calculate_performance()
         # store strategy performance data for further plotting
-        params_dic = {"freq": freq, "periods": periods, "rsi_lower": rsi_lower, "rsi_upper": rsi_upper}
-        self.dataploter.store_testcase_data(self.perf_obj, params_dic)  # comb[0] is current data freq
+        #params_dic = {"freq": freq, "periods": periods, "rsi_lower": rsi_lower, "rsi_upper": rsi_upper}
+        #self.dataploter.store_testcase_data(self.perf_obj, params_dic)  # comb[0] is current data freq
 
     def prepare_data(self, freq, periods, rsi_lower, rsi_upper):
         ''' Prepares the Data for Backtesting.
         '''
-        data = self.data.Close.to_frame().copy()
-        freq = "{}min".format(freq)
-        resamp = data.resample(freq).last().dropna().iloc[:-1]
-
-        # Calculate U and D
-        resamp["U"] = np.where(resamp.Close.diff() > 0, resamp.Close.diff(), 0)
-        resamp["D"] = np.where(resamp.Close.diff() < 0, -resamp.Close.diff(), 0)
+        freq = f"{freq}min"
+        data_resampled = self.data.resample(freq).last().iloc[:-1].copy()
+        data_resampled['returns'] = np.log(1 + data_resampled.Close.pct_change())
+        data_resampled.dropna()
+        diff = data_resampled.Close.diff()
 
         # Calculate MA_U and MA_D
-        resamp["MA_U"] = resamp.U.rolling(periods).mean()
-        resamp["MA_D"] = resamp.D.rolling(periods).mean()
+        ma_u = pd.Series(np.where(diff > 0, diff, 0)).rolling(periods).mean()
+        ma_d = pd.Series(np.where(diff < 0, -diff, 0)).rolling(periods).mean()
 
         # Calculate RSI
-        resamp["RSI"] = resamp.MA_U / (resamp.MA_U + resamp.MA_D) * 100
+        rsi = ma_u / (ma_u + ma_d) * 100
 
         # Determine position
-        resamp["position"] = np.where(resamp.RSI > rsi_upper, -1, np.nan)
-        resamp["position"] = np.where(resamp.RSI < rsi_lower, 1, resamp.position)
-        resamp["position"] = resamp.position.ffill().fillna(0)
-
-        self.results = resamp
-        return resamp
+        position = np.zeros(len(data_resampled))
+        position[rsi < rsi_lower] = 1
+        position[rsi > rsi_upper] = 0
+        position = pd.Series(position, index=data_resampled.index).ffill().fillna(0)
+        self.results = data_resampled.assign(position=position).dropna()
 
     def optimize_strategy(self, freq_range, periods_range, rsi_lower_range, rsi_upper_range, metric="Multiple"):
+        # Use only Close prices
+        self.data = self.data.loc[:, ["Close"]]
 
         performance_function = self.perf_obj.performance_functions[metric]
-
         freqs = np.arange(*freq_range)
         periods = np.arange(*periods_range)
         rsi_lowers = np.arange(*rsi_lower_range)
         rsi_uppers = np.arange(*rsi_upper_range)
         combinations = list(product(freqs, periods, rsi_lowers, rsi_uppers))
+        combinations = [(_, _, rsi_low, rsi_up) for (_, _, rsi_low, rsi_up) in combinations if rsi_up > rsi_low]
+
         logger.info(f"rsi_backtester: Optimizing of {self.indicator} for {self.symbol} using in total {len(combinations)} combinations..")
-        performance = []
-
-        for comb in combinations:
-            if comb[2] < comb[3]:
-                try:
-                    self.prepare_data(comb[0], comb[1], comb[2], comb[3])
+        for (freq, periods, rsi_low, rsi_up) in tqdm(combinations):
+                self.prepare_data(freq, periods, rsi_low, rsi_up)
+                if metric != "Multiple":
                     self.upsample()
-                    self.run_backtest()
-                    #print(f"INFO: run_backtest completed: {self.results.strategy_net=} ")
-                    performance.append(performance_function(self.results.strategy_net))
-                    # set strategy data and calculate performance
-                    self.perf_obj.set_data(self.results)
-                    self.perf_obj.calculate_performance()
-                    # store strategy performance data for further plotting
-                    params_dic = {"freq": comb[0], "periods": comb[1], "rsi_lower": comb[2], "rsi": comb[3]}
-                    self.dataploter.store_testcase_data(self.perf_obj, params_dic)
-                except Exception as e:
-                    print(f"ERROR: {e}")
-        print(f"Total number of tests: {len(performance)}")
+                self.run_backtest()
+                #performance.append(performance_function(self.results.strategy_net))
+                # set strategy data and calculate performance
+                self.perf_obj.set_data(self.results)
+                self.perf_obj.calculate_performance()
+                # store strategy performance data for further plotting
+                params_dic = {"freq": freq, "periods": periods, "rsi_lower": rsi_low, "rsi_upper": rsi_up}
+                self.dataploter.store_testcase_data(self.perf_obj, params_dic)
 
+        #print(f"Total number of executed tests: {len(performance)} ...")
 
     def find_best_strategy(self):
         ''' Finds the optimal strategy (global maximum) given the parameter ranges.

@@ -7,15 +7,18 @@ from strategies.rsi_backtester import RSIBacktester
 
 from strategies.bb_backtester import BBBacktester
 import sys
+from sys import exit
 sys.path.append(os.path.join(os.path.dirname(__file__), ''))
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
 
 from utilities.logger import logger
 import time
-from deployment.email import Email
 
-email = Email()
+
+#socks.setdefaultproxy(socks.HTTP, 'proxy.proxy.com', 8080)
+#socks.wrapmodule(smtplib)
+#email = Email()
 
 def create_ticker_output_dir(ticker):
     path = os.path.join(config.output_folder, ticker)
@@ -25,9 +28,12 @@ def create_ticker_output_dir(ticker):
 
 
 def get_hist_data_file(ticker):
-    path = os.path.join(config.hist_data_folder, ticker, f"{ticker}.parquet.gzip")
+
+    path = os.path.join(os.path.realpath(config.hist_data_folder), ticker, f"{ticker}.parquet.gzip")
+    #path = os.path.join(config.hist_data_folder, ticker, f"{ticker}.parquet.gzip")
     if not os.path.exists(path):
         # and not config.retrieve_data:
+        print(path)
         logger.error(f"strategy_functions: Path {path} for historical data not found. Configure data retrieving or provide the correct path.")
         exit(0)
     return path
@@ -43,15 +49,15 @@ def execute_macd(ticker):
                                    end=config.time_frame["end_date"])
 
     macd_backtester.optimize_strategy(freq_range=config.strategy_conf.freq,
-                                     EMA_S_range=config.strategy_conf.macd["ema_s"],
-                                     EMA_L_range=config.strategy_conf.macd["ema_l"],
+                                     ema_s_range=config.strategy_conf.macd["ema_s"],
+                                     ema_l_range=config.strategy_conf.macd["ema_l"],
                                      signal_mw_range=config.strategy_conf.macd["signal_mw"],
                                      metric=config.strategy_conf.metric)
 
     macd_backtester.dataploter.store_data(output_dir)
     end_t = time.time()
-    logger.info(f"strategy_functions: Total time took for macd optimization for {ticker}: {round(((end_t - start_t)/60),2)}")
-    email.send_email(f"Finished macd for {ticker}..")
+    logger.info(f"strategy_functions: Total time took for macd optimization for {ticker}: {round(((end_t - start_t)/ 60),2)} mins")
+    #email.send_email(f"Finished macd for {ticker}..")
 
 def execute_ema(ticker):
     start_t = time.time()
@@ -70,8 +76,8 @@ def execute_ema(ticker):
 
     ema_backtester.dataploter.store_data(output_dir)
     end_t = time.time()
-    logger.info(f"strategy_functions: Total time took for ema optimization for {ticker}: {round(((end_t - start_t)/60),2)}")
-    email.send_email(f"Finished ema for {ticker}..")
+    logger.info(f"strategy_functions: Total time took for ema optimization for {ticker}: {round(((end_t - start_t)/60),2)} mins")
+    #email.send_email(f"Finished ema for {ticker}..")
 
 def execute_sma(ticker):
     start_t = time.time()
@@ -90,8 +96,8 @@ def execute_sma(ticker):
 
     sma_backtester.dataploter.store_data(output_dir)
     end_t = time.time()
-    logger.info(f"strategy_functions: Total time took for sma optimization for {ticker}: {round(((end_t - start_t)/60),2)}")
-    email.send_email(f"Finished sma for {ticker}..")
+    logger.info(f"strategy_functions: Total time took for sma optimization for {ticker}: {round(((end_t - start_t)/60),2)} mins")
+    #email.send_email(f"Finished sma for {ticker}..")
 
 
 def execute_bb(ticker):
@@ -111,8 +117,8 @@ def execute_bb(ticker):
 
     bb_backtester.dataploter.store_data(output_dir)
     end_t = time.time()
-    logger.info(f"strategy_functions: Total time took for bb optimization for {ticker}: {round(((end_t - start_t)/60),2)}")
-    email.send_email(f"Finished bb for {ticker}..")
+    logger.info(f"strategy_functions: Total time took for bb optimization for {ticker}: {round(((end_t - start_t)/60),2)} mins")
+    #email.send_email(f"Finished bb for {ticker}..")
 
 def execute_rsi(ticker):
     start_t = time.time()
@@ -132,5 +138,5 @@ def execute_rsi(ticker):
 
     rsi_backtester.dataploter.store_data(output_dir)
     end_t = time.time()
-    logger.info(f"strategy_functions: Total time took for rsi optimization for {ticker}: {round(((end_t - start_t)/60),2)}")
-    email.send_email(f"Finished rsi for {ticker}..")
+    logger.info(f"strategy_functions: Total time took for rsi optimization for {ticker}: {round(((end_t - start_t)/60),2)} mins")
+    #email.send_email(f"Finished rsi for {ticker}..")

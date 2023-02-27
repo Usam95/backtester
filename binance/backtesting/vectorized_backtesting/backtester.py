@@ -1,4 +1,4 @@
-from core_config import config
+from  core_config import config
 import os
 from strategy_functions import execute_ema
 from strategy_functions import execute_sma
@@ -71,5 +71,5 @@ class Backtester:
 
 
 if __name__ == '__main__':
-    set_start_method('fork')
+    set_start_method('spawn')
     backtester = Backtester()

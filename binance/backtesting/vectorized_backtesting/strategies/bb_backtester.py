@@ -8,10 +8,10 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
 from utilities.Performance import Performance
 from utilities.DataPlot import DataPlot
 from backtester_base import VectorBacktesterBase
-
+from tqdm import tqdm
 import numpy as np
 from itertools import product
-
+import pandas as pd
 
 from utilities.logger import logger
 
@@ -56,26 +56,27 @@ class BBBacktester(VectorBacktesterBase):
         def prepare_data(self, freq, window, dev):  # Adj!!!
             ''' Prepares the Data for Backtesting.
             '''
-            data = self.data.Close.to_frame().copy()
             freq = "{}min".format(freq)
-            resamp = data.resample(freq).last().dropna().iloc[:-1]
+            data_resampled = self.data.copy().resample(freq).last().dropna().iloc[:-1]
+            data_resampled["returns"] = np.log(1 + data_resampled.Close.pct_change())
+            data_resampled.dropna()
 
-            ######### INSERT THE STRATEGY SPECIFIC CODE HERE ##################
-            resamp["SMA"] = resamp["Close"].rolling(window).mean()
-            resamp["Lower"] = resamp["SMA"] - resamp["Close"].rolling(window).std() * dev
-            resamp["Upper"] = resamp["SMA"] + resamp["Close"].rolling(window).std() * dev
+            # Calculate the rolling mean and standard deviation
+            rolling_mean = data_resampled["Close"].rolling(window).mean()
+            rolling_std = data_resampled["Close"].rolling(window).std()
 
-            resamp["distance"] = resamp.Close - resamp.SMA
-            resamp["position"] = np.where(resamp.Close < resamp.Lower, 1, np.nan)
-            resamp["position"] = np.where(resamp.Close > resamp.Upper, 0, resamp["position"])
-            #resamp["position"] = np.where(resamp.distance * resamp.distance.shift(1) < 0, 0, resamp["position"])
-            resamp["position"] = resamp.position.ffill().fillna(0)
-            ###################################################################
+            # Calculate upper and lower bands
+            upper_band = rolling_mean + rolling_std * dev
+            lower_band = rolling_mean - rolling_std * dev
 
-            resamp.dropna(inplace=True)
-            self.results = resamp
-
-            return resamp
+            # Calculate distance and position
+            position = np.where(data_resampled.Close < lower_band, 1, np.nan)
+            position = np.where(data_resampled.Close > upper_band, 0, position)
+            position = pd.Series(position, index=data_resampled.index).ffill().fillna(0)
+            # Create a new dataframe with required columns
+            data_resampled = data_resampled.assign(position=position)
+            data_resampled.dropna(inplace=True)
+            self.results = data_resampled
 
         def optimize_strategy(self, freq_range, window_range, dev_range, metric="Multiple"):  # Adj!!!
             '''
@@ -96,46 +97,28 @@ class BBBacktester(VectorBacktesterBase):
                 performance metric to be optimized (can be: "Multiple", "Sharpe", "Sortino", "Calmar", "Kelly")
             '''
 
-            self.metric = metric
-
-            if metric == "Multiple":
-                performance_function = self.perf_obj.calculate_multiple
-            elif metric == "Sharpe":
-                performance_function = self.perf_obj.calculate_sharpe
-            elif metric == "Sortino":
-                performance_function = self.perf_obj.calculate_sortino
-            elif metric == "Calmar":
-                performance_function = self.perf_obj.calculate_calmar
-            elif metric == "Kelly":
-                performance_function = self.perf_obj.calculate_kelly_criterion
+            self.data = self.data.loc[:, ["Close"]]
+            # performance_function = self.perf_obj.performance_functions[metric]
 
             freqs = range(*freq_range)
             windows = range(*window_range)
             devs = np.arange(*dev_range)  # NEW!!!
-
             combinations = list(product(freqs, windows, devs))
-
             logger.info(f"bb_backtester: Optimizing of {self.indicator} for {self.symbol} using in total {len(combinations)} combinations..")
 
-            performance = []
-            for comb in combinations:
-                self.prepare_data(comb[0], comb[1], comb[2])
-                self.upsample()
+            #performance = []
+            for (freq, window, dev) in tqdm(combinations):
+                self.prepare_data(freq, window, dev)
+                if metric != "Multiple":
+                    self.upsample()
                 self.run_backtest()
-                performance.append(performance_function(self.results.strategy))
+                #performance.append(performance_function(self.results.strategy))
                 # set strategy data and calculate performance
                 self.perf_obj.set_data(self.results)
                 self.perf_obj.calculate_performance()
                 # store strategy performance data for further plotting
-                params_dic = {"freq": comb[0], "SMA": comb[1], "Dev": comb[2]}
-
+                params_dic = {"freq": freq, "SMA": window, "Dev": dev}
                 self.dataploter.store_testcase_data(self.perf_obj, params_dic)  # comb[0] is current data freq
-
-            #self.results_overview = pd.DataFrame(data=np.array(combinations),
-            #                                    columns=["Freq", "Windows", "Devs"])
-            #self.results_overview["Performance"] = performance
-            #self.find_best_strategy()
-
 
         def find_best_strategy(self):
             ''' Finds the optimal strategy (global maximum) given the parameter ranges.

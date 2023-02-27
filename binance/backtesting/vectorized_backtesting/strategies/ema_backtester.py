@@ -1,6 +1,6 @@
 import os
 import sys
-
+from tqdm import tqdm
 sys.path.append(os.path.join(os.path.dirname(__file__), '.'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
@@ -68,26 +68,24 @@ class EMABacktester(VectorBacktesterBase):
         self.dataploter.store_testcase_data(self.perf_obj, params_dic)  # comb[0] is current data freq
         #self.print_performance()
 
-    def prepare_data(self, freq, EMA_S, EMA_L):  # Adj!!!
+    def prepare_data(self, freq, ema_s_val, ema_l_val):  # Adj!!!
         ''' Prepares the Data for Backtesting.
         '''
-        data = self.data.Close.to_frame().copy()
-        freq = "{}min".format(freq)
-        resamp = data.resample(freq).last().dropna().iloc[:-1]
-
+        freq = f"{freq}min"
+        data_resampled = self.data.resample(freq).last().dropna().iloc[:-1].copy()
+        data_resampled["returns"] = np.log(1 + data_resampled.Close.pct_change())
+        data_resampled.dropna()
         ######### INSERT THE STRATEGY SPECIFIC CODE HERE ##################
 
-        resamp["EMA_S"] = resamp["Close"].ewm(span=EMA_S, min_periods=EMA_S).mean()
-        resamp["EMA_L"] = resamp["Close"].ewm(span=EMA_L, min_periods=EMA_L).mean()
+        ema_s = data_resampled["Close"].ewm(span=ema_s_val-1, min_periods=ema_s_val).mean()
+        ema_l = data_resampled["Close"].ewm(span=ema_l_val-1, min_periods=ema_l_val).mean()
 
-        resamp["position"] = np.where(resamp["EMA_S"] > resamp["EMA_L"], 1, 0)
-
-        resamp["position"] = resamp.position.ffill().fillna(0)
+        position = np.zeros(len(data_resampled))
+        position[ema_s > ema_l] = 1
         ###################################################################
-
-        resamp.dropna(inplace=True)
-        self.results = resamp
-        return resamp
+        position = pd.Series(position, index=data_resampled.index).ffill().fillna(0)
+        data_resampled = data_resampled.assign(position=position)
+        self.results = data_resampled
 
     def optimize_strategy(self, freq_range, EMA_S_range, EMA_L_range, metric="Multiple"):  # Adj!!!
         '''
@@ -108,49 +106,31 @@ class EMABacktester(VectorBacktesterBase):
             performance metric to be optimized (can be: "Multiple", "Sharpe", "Sortino", "Calmar", "Kelly")
         '''
 
-        self.metric = metric
-
-        if metric == "Multiple":
-            performance_function = self.perf_obj.calculate_multiple
-        elif metric == "Sharpe":
-            performance_function = self.perf_obj.calculate_sharpe
-        elif metric == "Sortino":
-            performance_function = self.perf_obj.calculate_sortino
-        elif metric == "Calmar":
-            performance_function = self.perf_obj.calculate_calmar
-        elif metric == "Kelly":
-            performance_function = self.perf_obj.calculate_kelly_criterion
+        # Use only Close prices
+        self.data = self.data.loc[:, ["Close"]]
+        # performance_function = self.perf_obj.performance_functions[metric]
 
         freqs = range(*freq_range)
         ema_s = range(*EMA_S_range)
         ema_l = np.arange(*EMA_L_range)  # NEW!!!
 
         combinations = list(product(freqs, ema_s, ema_l))
+        combinations = [(_, ema_s, ema_l) for (_, ema_s, ema_l) in combinations if ema_l > ema_s]  # filter the combinations list
         logger.info(f"ema_backtester: Optimizing of {self.indicator} for {self.symbol} using in total {len(combinations)} combinations..")
-        performance = []
 
-        # for data plotting
-        #self.strategy_df = pd.DataFrame()
-        count = 0
-        for comb in combinations:
-            if comb[1] < comb[2]:
-                self.prepare_data(comb[0], comb[1], comb[2])
+        for (freq, ema_s_val, ema_l_val) in tqdm(combinations):
+            self.prepare_data(freq, ema_s_val, ema_l_val)
+            if metric != "Multiple":
                 self.upsample()
-                self.run_backtest()
-                performance.append(performance_function(self.results.strategy_net))
-                # set strategy data and calculate performance
-                self.perf_obj.set_data(self.results)
-                self.perf_obj.calculate_performance()
-                # store strategy performance data for further plotting
-                params_dic = {"freq":comb[0], "EMA_S":comb[1], "EMA_L":comb[2]}
-                self.dataploter.store_testcase_data(self.perf_obj, params_dic) # comb[0] is current data freq
-                count +=1
-        print(f"Total number of test: {count}")
+            self.run_backtest()
+            # set strategy data and calculate performance
+            self.perf_obj.set_data(self.results)
+            self.perf_obj.calculate_performance()
+            # store strategy performance data for further plotting
+            params_dic = {"freq": freq, "EMA_S": ema_s_val, "EMA_L": ema_l_val}
+            self.dataploter.store_testcase_data(self.perf_obj, params_dic) # comb[0] is current data freq
 
-        #self.results_overview = pd.DataFrame(data=np.array(combinations),
-        #                                     columns=["Freq", "EMA_S", "EMA_L"])
-        #self.results_overview["Performance"] = performance
-        #self.find_best_strategy()
+        print(f"Total number of executed tests: {len(combinations)} ..")
 
     def find_best_strategy(self):
         ''' Finds the optimal strategy (global maximum) given the parameter ranges.

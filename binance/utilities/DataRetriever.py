@@ -96,7 +96,6 @@ class DataRetriever:
         with open(filename, "rb") as fp:   # Unpickling
             self.tickers = pickle.load(fp)
 
-                                           
     def remove_ticker_and_store_list(self, ticker, filename="symbols.txt"): 
         try: 
             self.tickers.remove(ticker)
@@ -191,8 +190,6 @@ class DataRetriever:
         for ticker in tickers:
             df = self.load_data(ticker)
             last_timestamp = df.index[-1]
-
-
 
     def retrieve_all_historical_data(self):  
         total_start_t = time.time()

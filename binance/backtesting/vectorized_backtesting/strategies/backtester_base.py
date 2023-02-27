@@ -15,6 +15,7 @@ class VectorBacktesterBase:
         self.end = end
         self.tc = tc
         self.results = None
+        self.data = None
         self.dataset = dataset
         self.test_size = 0.2
         self.get_data()
@@ -30,21 +31,18 @@ class VectorBacktesterBase:
 
         _, file_extension = os.path.splitext(self.filepath)
         if file_extension == ".gzip":
-            raw = pd.read_parquet(self.filepath)
+            self.data = pd.read_parquet(self.filepath)
         else:
-            raw = pd.read_csv(self.filepath, parse_dates=["Date"], index_col="Date")
+            self.data = pd.read_csv(self.filepath, parse_dates=["Date"], index_col="Date")
 
-        raw["returns"] = np.log(raw.Close / raw.Close.shift(1))
-        if 'Unnamed: 0' in raw.columns:
-            raw.drop(columns=['Unnamed: 0'], inplace=True)
-        self.data = raw
+        #self.data["returns"] = np.log(self.data.Close / self.data.Close.shift(1))
+        if 'Unnamed: 0' in self.data.columns:
+            self.data.drop(columns=['Unnamed: 0'], inplace=True)
 
         if len(self.start) > 0 and len(self.end) > 0:
-            self.data = self.data.loc[self.start:self.end].copy()
+            self.data = self.data.loc[self.start:self.end]
 
         logger.info(f"backtester_base: Load data with {len(self.data)} samples.")
-        #else:
-        #    self.train_test_split()
 
     def train_test_split(self):
         print(f"Length bevore splitting: {len(self.data)}")
@@ -70,16 +68,13 @@ class VectorBacktesterBase:
     def run_backtest(self):
         ''' Runs the strategy backtest.
         '''
-        data = self.results.copy()
-        data["strategy"] = data["position"].shift(1) * data["returns"]
-
-        # determine the number of trades in each bar
-        data["trades"] = data.position.diff().fillna(0).abs()
-
-        # subtract transaction/trading costs from pre-cost return
-        data["strategy_net"] = data.strategy - data.trades * self.tc
-
-        self.results = data
+        trades = self.results["position"].diff().abs().shift(1)
+        strategy = self.results["position"].shift(1) * self.results["returns"]
+        strategy_net = strategy - trades * self.tc
+        self.results = self.results.assign(strategy=strategy,
+                                           trades=trades,
+                                           strategy_net=strategy_net)
+        self.results.dropna(inplace=True)
 
     def upsample(self):
         '''  Upsamples/copies trading positions back to higher frequency.
@@ -87,11 +82,13 @@ class VectorBacktesterBase:
 
         data = self.data.copy()
         resamp = self.results.copy()
+        """ Upsample the data DataFrame to the same frequency as results DataFrame.
+            Set the index of data to be equal to the index of resamp and 
+            use the ffill method to forward-fill missing values.
+        """
+        data = data.reindex(resamp.index, method='ffill')
+        data['position'] = resamp['position']
 
-        data["position"] = resamp.position.shift()
-        data = data.loc[resamp.index[0]:].copy()
-        data.position = data.position.shift(-1).ffill()
-        data.dropna(inplace=True)
         self.results = data
 
     def plot_results(self, leverage=False):

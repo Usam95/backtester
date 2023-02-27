@@ -3,8 +3,8 @@ from typing import Optional
 from json import load
 import os
 
-BACKTESTER_CONFIG_FILE = "backtester_config.json"
-STRATEGY_CONFIG_FILES = "strategy_config.json"
+BACKTESTER_CONFIG_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "backtester_config.json")
+STRATEGY_CONFIG_FILES = os.path.join(os.path.dirname(os.path.realpath(__file__)), "strategy_config.json")
 
 
 class StrategyConfig(BaseModel):
@@ -39,6 +39,7 @@ class Backtester(BaseModel):
     ml_strategy: bool
     strategies: list[str]
     ptc: float
+    multiple_only: bool
 
 
 

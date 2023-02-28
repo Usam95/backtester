@@ -1,1 +1,10 @@
 credentials.py
+hist_data/*
+*/__pycache__/*
+results/*
+__pycache__
+.pyc
+.ipynb
+.sav
+.log
+.csv

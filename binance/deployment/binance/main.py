@@ -194,7 +194,7 @@ class LongOnlyTrader():
                 self.define_strategy()
                 self.execute_trades()
             else:
-
+                pass
             try:
                 self.report_as_email()
             except Exception as e:

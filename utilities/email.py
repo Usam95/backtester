@@ -5,8 +5,8 @@ import imghdr
 from email.message import EmailMessage
 
 import sys
-sys.path.append('../utilities')
-from credentials import *
+sys.path.append('')
+from utilities.credentials import *
 
 class Email:
     def __init__(self):

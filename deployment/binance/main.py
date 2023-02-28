@@ -17,7 +17,7 @@ import warnings
 warnings.filterwarnings('ignore')
 import sys
 sys.path.append('../../utilities')
-sys.path.append('../../backtesting/ml_backtesting')
+sys.path.append('../../binance/backtesting/ml_backtesting')
 from Email import Email
 
 from MlDataManager import MlDataManager

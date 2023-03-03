@@ -1,9 +1,9 @@
 {
   "tickers_": ["LTCUSDT", "XRPUSDT", "BTCUSDT", "TRXUSDT"],
-  "tickers": ["XRPUSDT"],
+  "tickers": ["BTCUSDT"],
   "fetch_data": true,
   "split_size": 0.2,
-  "hist_data_folder": "../../hist_data/",
+  "hist_data_folder": "hist_data",
   "output_folder": "results",
   "retrieve_data": true,
   "time_frame": {
@@ -17,8 +17,8 @@
   "multiple_strategies": false,
 
   "_comment": "accepted strategies: ema, sma, macd, bb, so, rsi",
-  "strategies": ["macd"],
-  "strategies_": [
+  "strategies_": ["sma"],
+  "strategies": [
       "macd",
       "ema",
       "sma",

@@ -1,6 +1,9 @@
 import pandas as pd
 import numpy as np
 
+from logger import Logger
+logger = Logger().get_logger()
+
 
 class Performance:
     def __init__(self, data=None, symbol=None,  multiple_only = True):

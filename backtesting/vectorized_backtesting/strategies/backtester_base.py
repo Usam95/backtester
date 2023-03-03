@@ -5,7 +5,9 @@ import seaborn as sns
 import os
 
 from sklearn.model_selection import train_test_split
-from utilities.logger import logger
+from utilities.logger import Logger
+
+logger = Logger().get_logger()
 
 class VectorBacktesterBase:
     def __init__(self, filepath, symbol, tc=0.00007, start=None, end=None, dataset="training"):

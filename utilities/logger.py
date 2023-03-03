@@ -16,7 +16,10 @@ class Logger(metaclass=Singleton):
     def __init__(self):
         timestamp = datetime.datetime.now().strftime("logfile_%Y-%m-%d_%H-%M-%S.log")
         log_filename = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "logs", timestamp))
-        logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', filename=log_filename, level=logging.DEBUG)
+        logging.basicConfig(datefmt='%Y-%m-%d %H:%M:%S',
+                            format='%(asctime)s %(levelname)s %(funcName)s %(message)s',
+                            filename=log_filename,
+                            level=logging.INFO)
         self.logger = logging.getLogger()
 
     def get_logger(self):

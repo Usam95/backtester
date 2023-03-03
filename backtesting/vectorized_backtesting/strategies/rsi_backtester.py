@@ -1,11 +1,6 @@
 import os
 import sys
 from tqdm import tqdm
-sys.path.append(os.path.join(os.path.dirname(__file__), '.'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
-
 from utilities.performance import Performance
 from utilities.data_plot import DataPlot
 
@@ -14,9 +9,10 @@ from backtester_base import VectorBacktesterBase
 import pandas as pd
 import numpy as np
 from itertools import product
-import matplotlib.pyplot as plt
-import threading
-from utilities.logger import logger
+
+from utilities.logger import Logger
+logger = Logger().get_logger()
+
 
 class RSIBacktester(VectorBacktesterBase):
 
@@ -102,7 +98,6 @@ class RSIBacktester(VectorBacktesterBase):
         combinations = list(product(freqs, periods, rsi_lowers, rsi_uppers))
         combinations = [(_, _, rsi_low, rsi_up) for (_, _, rsi_low, rsi_up) in combinations if rsi_up > rsi_low]
 
-        logger.info(f"rsi_backtester: Optimizing of {self.indicator} for {self.symbol} using in total {len(combinations)} combinations..")
         for (freq, periods, rsi_low, rsi_up) in tqdm(combinations):
                 self.prepare_data(freq, periods, rsi_low, rsi_up)
                 if metric != "Multiple":
@@ -116,7 +111,7 @@ class RSIBacktester(VectorBacktesterBase):
                 params_dic = {"freq": freq, "periods": periods, "rsi_lower": rsi_low, "rsi_upper": rsi_up}
                 self.dataploter.store_testcase_data(self.perf_obj, params_dic)
 
-        #print(f"Total number of executed tests: {len(performance)} ...")
+        logger.info(f"Total number of executed tests: {len(combinations)}.")
 
     def find_best_strategy(self):
         ''' Finds the optimal strategy (global maximum) given the parameter ranges.

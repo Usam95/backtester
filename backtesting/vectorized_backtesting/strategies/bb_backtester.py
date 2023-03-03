@@ -1,9 +1,3 @@
-import os
-import sys
-
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
 
 from utilities.performance import Performance
 from utilities.data_plot import DataPlot
@@ -13,7 +7,9 @@ import numpy as np
 from itertools import product
 import pandas as pd
 
-from utilities.logger import logger
+from utilities.logger import Logger
+logger = Logger().get_logger()
+
 
 class BBBacktester(VectorBacktesterBase):
 
@@ -22,6 +18,7 @@ class BBBacktester(VectorBacktesterBase):
             self.indicator = "BB"
             self.perf_obj = Performance()
             self.dataploter = DataPlot(dataset, self.indicator, self.symbol)
+
         def test_strategy(self, freq=60, window=50, dev=2):  # Adj!!!
             '''
             Prepares the data and backtests the trading strategy incl. reporting (Wrapper).
@@ -104,9 +101,7 @@ class BBBacktester(VectorBacktesterBase):
             windows = range(*window_range)
             devs = np.arange(*dev_range)  # NEW!!!
             combinations = list(product(freqs, windows, devs))
-            logger.info(f"bb_backtester: Optimizing of {self.indicator} for {self.symbol} using in total {len(combinations)} combinations..")
 
-            #performance = []
             for (freq, window, dev) in tqdm(combinations):
                 self.prepare_data(freq, window, dev)
                 if metric != "Multiple":
@@ -117,8 +112,9 @@ class BBBacktester(VectorBacktesterBase):
                 self.perf_obj.set_data(self.results)
                 self.perf_obj.calculate_performance()
                 # store strategy performance data for further plotting
-                params_dic = {"freq": freq, "SMA": window, "Dev": dev}
+                params_dic = {"freq": freq, "window": window, "stddev": dev}
                 self.dataploter.store_testcase_data(self.perf_obj, params_dic)  # comb[0] is current data freq
+            logger.info(f"Total number of executed tests: {len(combinations)}.")
 
         def find_best_strategy(self):
             ''' Finds the optimal strategy (global maximum) given the parameter ranges.
@@ -128,8 +124,7 @@ class BBBacktester(VectorBacktesterBase):
             sma = int(best.Windows.iloc[0])
             dev = best.Devs.iloc[0]  # NEW!!!
             perf = best.Performance.iloc[0]
-            print("Frequency: {} | SMA: {} | Dev: {} | {}: {}".format(freq, sma, dev, self.metric,
-                                                                          round(perf, 6)))
+            print("Frequency: {} | SMA: {} | Dev: {} | {}: {}".format(freq, sma, dev, self.metric, round(perf, 6)))
             self.test_strategy(freq, sma, dev)
 
 if __name__ == "__main__":
@@ -140,5 +135,5 @@ if __name__ == "__main__":
     ptc = 0.00007
     #bb = BBStrategy(filepath=filepath, symbol=symbol, start=start, end=end, tc=ptc)
    # bb.optimize_strategy((1, 30, 10), (10, 30, 10), (10, 50, 10), metric="Calmar")
-    print(len(bb.dataploter.df))
-    print(bb.dataploter.df.head())
+    #print(len(bb.dataploter.df))
+    #print(bb.dataploter.df.head())

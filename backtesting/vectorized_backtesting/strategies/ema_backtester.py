@@ -1,13 +1,6 @@
 import os
 import sys
 from tqdm import tqdm
-sys.path.append(os.path.join(os.path.dirname(__file__), '.'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
-
-from utilities.logger import logger
-
 from utilities.performance import Performance
 from utilities.data_plot import DataPlot
 
@@ -16,7 +9,10 @@ from backtester_base import VectorBacktesterBase
 import pandas as pd
 import numpy as np
 from itertools import product
-import matplotlib.pyplot as plt
+from utilities.logger import Logger
+
+logger = Logger().get_logger()
+
 
 class EMABacktester(VectorBacktesterBase):
 
@@ -87,23 +83,23 @@ class EMABacktester(VectorBacktesterBase):
         data_resampled = data_resampled.assign(position=position)
         self.results = data_resampled
 
-    def optimize_strategy(self, freq_range, EMA_S_range, EMA_L_range, metric="Multiple"):  # Adj!!!
+    def optimize_strategy(self, freq_range, ema_s_range, ema_l_range, metric="Multiple"):  # Adj!!!
         '''
         Backtests strategy for different parameter values incl. Optimization and Reporting (Wrapper).
 
         Parameters
         ============
         freq_range: tuple
-            tuples of the form (start, end, step size).
+            A tuple of the form (start, end, step size) specifying the range of frequencies to be tested.
 
-        window_range: tuple
-            tuples of the form (start, end, step size).
+        sma_s_range: tuple
+            A tuple of the form (start, end, step size) specifying the range of short moving average (SMA) window sizes to be tested.
 
-        dev_range: tuple
-            tuples of the form (start, end, step size).
+        sma_l_range: tuple
+            A tuple of the form (start, end, step size) specifying the range of long moving average (SMA) window sizes to be tested.
 
-        metric: str
-            performance metric to be optimized (can be: "Multiple", "Sharpe", "Sortino", "Calmar", "Kelly")
+        metric: str (default: "Multiple")
+            A performance metric to be optimized, which can be one of the following: "Multiple", "Sharpe", "Sortino", "Calmar", or "Kelly".
         '''
 
         # Use only Close prices
@@ -111,8 +107,8 @@ class EMABacktester(VectorBacktesterBase):
         # performance_function = self.perf_obj.performance_functions[metric]
 
         freqs = range(*freq_range)
-        ema_s = range(*EMA_S_range)
-        ema_l = np.arange(*EMA_L_range)  # NEW!!!
+        ema_s = range(*ema_s_range)
+        ema_l = np.arange(*ema_l_range)  # NEW!!!
 
         combinations = list(product(freqs, ema_s, ema_l))
         combinations = [(_, ema_s, ema_l) for (_, ema_s, ema_l) in combinations if ema_l > ema_s]  # filter the combinations list

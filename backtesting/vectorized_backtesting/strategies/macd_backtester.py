@@ -1,22 +1,13 @@
-import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-from scipy.optimize import brute
-import os
-import sys
+import numpy as np
 from tqdm import tqdm
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
-from utilities.logger import logger
-
 from utilities.data_plot import DataPlot
 from utilities.performance import Performance
 from itertools import product
-
 from backtester_base import VectorBacktesterBase
 
-plt.style.use("seaborn")
+from utilities.logger import Logger
+logger = Logger().get_logger()
 
 
 class MACDBacktester(VectorBacktesterBase):
@@ -177,14 +168,8 @@ class MACDBacktester(VectorBacktesterBase):
         ema_l_range = range(*ema_l_range)  # NEW!!!
         signal_mw_range = range(*signal_mw_range)
         ema_pairs = [(ema_s, ema_l) for ema_s in ema_s_range for ema_l in ema_l_range if ema_l > ema_s and (ema_l - ema_s) >= 10]
-
         combinations = list(product(freqs, ema_pairs, signal_mw_range))
-        #combinations = list(product(freqs, ema_s, ema_l, signal_mw))
-        #combinations = [(_, ema_s, ema_l, _) for (_, ema_s, ema_l, _) in combinations if ema_l > ema_s]
-        logger.info(f"macd_backtester: Optimizing of {self.indicator} for {self.symbol} using in total {len(combinations)} combinations..")
-        #performance = []
 
-        # for data plotting
         for (freq, (ema_s, ema_l), signal_mw) in tqdm(combinations):
             self.prepare_data(freq, ema_s, ema_l, signal_mw)
             if metric != "Multiple":
@@ -197,6 +182,9 @@ class MACDBacktester(VectorBacktesterBase):
             # store strategy performance data for further plotting
             params_dic = {"freq": freq, "SMA_S": ema_s, "SMA_L": ema_l, "Signal_Mw": signal_mw}
             self.dataploter.store_testcase_data(self.perf_obj, params_dic)
+
+        logger.info(f"Total number of executed tests: {len(combinations)}.")
+
 
     def find_best_strategy(self):
         ''' Finds the optimal strategy (global maximum) given the parameter ranges.

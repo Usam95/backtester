@@ -1,17 +1,16 @@
 import os
 import sys
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
-
-from backtester_base import VectorBacktesterBase
 import numpy as np
+import pandas as pd
+from tqdm import tqdm
 from itertools import product
 from utilities.data_plot import DataPlot
 from utilities.performance import Performance
-from utilities.logger import logger
+from backtester_base import VectorBacktesterBase
+from utilities.logger import Logger
 
+logger = Logger().get_logger()
 
 
 class SMABacktester(VectorBacktesterBase):
@@ -60,87 +59,71 @@ class SMABacktester(VectorBacktesterBase):
         self.dataploter.store_testcase_data(self.perf_obj, params_dic)  # comb[0] is current data freq
         #self.print_performance()
 
-    def prepare_data(self, freq, SMA_S, SMA_L):  # Adj!!!
+    def prepare_data(self, freq, sma_s_val, sma_l_val):  # Adj!!!
         ''' Prepares the Data for Backtesting.
         '''
-        data = self.data.Close.to_frame().copy()
-        freq = "{}min".format(freq)
-        resamp = data.resample(freq).last().dropna().iloc[:-1]
+        freq = f"{freq}min"
+        data_resampled = self.data.resample(freq).last().dropna().iloc[:-1].copy()
+        data_resampled["returns"] = np.log(1 + data_resampled.Close.pct_change())
+        data_resampled.dropna()
 
         ######### INSERT THE STRATEGY SPECIFIC CODE HERE ##################
-
-        resamp["SMA_S"] = resamp["Close"].rolling(window=SMA_S, min_periods=SMA_S).mean()
-        resamp["SMA_L"] = resamp["Close"].rolling(window=SMA_L, min_periods=SMA_L).mean()
-
-        resamp["position"] = np.where(resamp["SMA_S"] > resamp["SMA_L"], 1, 0)
-
-        resamp["position"] = resamp.position.ffill().fillna(0)
+        ema_s = data_resampled["Close"].rolling(window=sma_s_val, min_periods=sma_s_val).mean()
+        ema_l = data_resampled["Close"].rolling(window=sma_l_val, min_periods=sma_l_val).mean()
+        position = np.zeros(len(data_resampled))
+        position[ema_s > ema_l] = 1
         ###################################################################
+        position = pd.Series(position, index=data_resampled.index).ffill().fillna(0)
+        data_resampled = data_resampled.assign(position=position)
+        self.results = data_resampled
 
-        resamp.dropna(inplace=True)
-        self.results = resamp
-        return resamp
-
-    def optimize_strategy(self, freq_range, SMA_S_range, SMA_L_range, metric="Multiple"):  # Adj!!!
+    def optimize_strategy(self, freq_range, sma_s_range, sma_l_range, metric="Multiple"):
         '''
-        Backtests strategy for different parameter values incl. Optimization and Reporting (Wrapper).
+        Backtests strategy for different parameter values incl. Optimization and Reporting.
 
         Parameters
         ============
         freq_range: tuple
-            tuples of the form (start, end, step size).
+            A tuple of the form (start, end, step size) specifying the range of frequencies to be tested.
 
-        window_range: tuple
-            tuples of the form (start, end, step size).
+        sma_s_range: tuple
+            A tuple of the form (start, end, step size) specifying the range of short moving average (SMA) window sizes to be tested.
 
-        dev_range: tuple
-            tuples of the form (start, end, step size).
+        sma_l_range: tuple
+            A tuple of the form (start, end, step size) specifying the range of long moving average (SMA) window sizes to be tested.
 
-        metric: str
-            performance metric to be optimized (can be: "Multiple", "Sharpe", "Sortino", "Calmar", "Kelly")
+        metric: str (default: "Multiple")
+            A performance metric to be optimized, which can be one of the following: "Multiple", "Sharpe", "Sortino", "Calmar", or "Kelly".
         '''
 
-        self.metric = metric
-
-        if metric == "Multiple":
-            performance_function = self.perf_obj.calculate_multiple
-        elif metric == "Sharpe":
-            performance_function = self.perf_obj.calculate_sharpe
-        elif metric == "Sortino":
-            performance_function = self.perf_obj.calculate_sortino
-        elif metric == "Calmar":
-            performance_function = self.perf_obj.calculate_calmar
-        elif metric == "Kelly":
-            performance_function = self.perf_obj.calculate_kelly_criterion
+        # Use only Close prices
+        self.data = self.data.loc[:, ["Close"]]
+        # performance_function = self.perf_obj.performance_functions[metric]
 
         freqs = range(*freq_range)
-        sma_s = range(*SMA_S_range)
-        sma_l = np.arange(*SMA_L_range)  # NEW!!!
+        sma_s = range(*sma_s_range)
+        sma_l = np.arange(*sma_l_range)  # NEW!!!
 
         combinations = list(product(freqs, sma_s, sma_l))
-        logger.info(f"sma_backtester: Optimizing of {self.indicator} for {self.symbol} using in total {len(combinations)} combinations..")
-        performance = []
+        # remove combinations where sma_s > sma_l
+        combinations = [(_, sma_s, sma_l) for (_, sma_s, sma_l) in combinations if sma_l > sma_s]  # filter the combinations list
+        # remove combinations there freq > 180 and not multiple of 30
+        combinations = list(filter(lambda x: x[0] <= 180 or x[0] % 30 == 0, combinations))
 
-        # for data plotting
-        #self.strategy_df = pd.DataFrame()
-
-        for comb in combinations:
-            if comb[1] < comb[2]:
-                self.prepare_data(comb[0], comb[1], comb[2])
+        for (freq, sma_s_val, sma_l_val) in tqdm(combinations):
+            self.prepare_data(freq, sma_s_val, sma_l_val)
+            if metric != "Multiple":
                 self.upsample()
-                self.run_backtest()
-                performance.append(performance_function(self.results.strategy))
-                # set strategy data and calculate performance
-                self.perf_obj.set_data(self.results)
-                self.perf_obj.calculate_performance()
-                # store strategy performance data for further plotting
-                params_dic = {"freq":comb[0], "SMA_S":comb[1], "SMA_L":comb[2]}
-                self.dataploter.store_testcase_data(self.perf_obj, params_dic) # comb[0] is current data freq
+            self.run_backtest()
+            # set strategy data and calculate performance
+            self.perf_obj.set_data(self.results)
+            self.perf_obj.calculate_performance()
+            # store strategy performance data for further plotting
+            params_dic = {"freq": freq, "sma_s": sma_s_val, "sma_l": sma_l_val}
+            self.dataploter.store_testcase_data(self.perf_obj, params_dic) # comb[0] is current data freq
 
-        #self.results_overview = pd.DataFrame(data=np.array(combinations),
-        #                                     columns=["Freq", "EMA_S", "EMA_L"])
-        #self.results_overview["Performance"] = performance
-        #self.find_best_strategy()
+        logger.info(f"Total number of executed tests: {len(combinations)}.")
+
 
     def find_best_strategy(self):
         ''' Finds the optimal strategy (global maximum) given the parameter ranges.

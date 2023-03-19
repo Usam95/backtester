@@ -1,7 +1,7 @@
 {
   "symbol": "",
   "hist_data_folder": "hist_data",
-  "strategies": ["ema", "bb"],
+  "strategies": ["ema", "sma", "macd", "rsi", "so", "bb"],
   "time_frame": {"start_date": "2018-06-01", "end_date": "2018-09-01"},
   "initial_balance": 0,
   "units": 0,
@@ -9,5 +9,4 @@
   "ptc": 0.001,
   "take_profit": 0.1,
   "stop_loss": 0.05
-
 }

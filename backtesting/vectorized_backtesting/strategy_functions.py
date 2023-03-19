@@ -1,12 +1,12 @@
 import os
 import time
 
-from strategies.ema_backtester import EMABacktester
-from strategies.sma_backtester import SMABacktester
-from strategies.macd_backtester import MACDBacktester
-from strategies.rsi_backtester import RSIBacktester
-from strategies.bb_backtester import BBBacktester
-from config.core_config import config
+from backtesting.indicators.ema_backtester import EMABacktester
+from backtesting.indicators.sma_backtester import SMABacktester
+from backtesting.indicators.macd_backtester import MACDBacktester
+from backtesting.indicators.rsi_backtester import RSIBacktester
+from backtesting.indicators.bb_backtester import BBBacktester
+from config import config
 from sys import exit
 
 from utilities.logger import Logger
@@ -14,6 +14,7 @@ logger = Logger().get_logger()
 
 
 def create_ticker_output_dir(ticker):
+    #path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", config.hist_data_folder))
     path = os.path.join(config.output_folder, ticker)
     if not os.path.exists(path):
         os.makedirs(path)
@@ -21,7 +22,8 @@ def create_ticker_output_dir(ticker):
 
 
 def get_hist_data_file(ticker):
-    path = os.path.join(os.path.realpath(config.hist_data_folder), ticker, f"{ticker}.parquet.gzip")
+    path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", config.hist_data_folder, ticker, f"{ticker}.parquet.gzip"))
+    # path = os.path.join(os.path.realpath(config.hist_data_folder), ticker, f"{ticker}.parquet.gzip")
     if not os.path.exists(path):
         logger.error(f"Path {path} for historical data not found.\n"
                      f"Configure data retrieving or provide the correct path.")

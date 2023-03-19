@@ -1,6 +1,6 @@
 {
   "tickers_": ["LTCUSDT", "XRPUSDT", "BTCUSDT", "TRXUSDT"],
-  "tickers": ["BTCUSDT"],
+  "tickers": ["LTCUSDT"],
   "fetch_data": true,
   "split_size": 0.2,
   "hist_data_folder": "hist_data",
@@ -22,8 +22,9 @@
       "macd",
       "ema",
       "sma",
-      "macd",
-      "rsi"
+      "so",
+      "rsi",
+      "bb"
   ]
 }
 

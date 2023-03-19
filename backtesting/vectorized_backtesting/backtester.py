@@ -3,7 +3,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 import backtesting.set_project_path
 
-from config.core_config import config
+from config import config
 import os
 
 from strategy_functions import execute_ema

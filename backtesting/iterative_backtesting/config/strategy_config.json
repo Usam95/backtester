@@ -1,0 +1,40 @@
+{
+    "freq" : 5,
+
+    "ema": {
+        "ema_s": 10,
+        "ema_l": 30
+    },
+
+    "ema_": {
+        "ema_s": 10,
+        "ema_l": 50
+    },
+
+    "sma": {
+        "sma_s": 10,
+        "sma_l": 30
+    },
+
+    "bb": {
+        "sma": 20,
+        "dev": 2
+    },
+
+    "macd": {
+        "ema_s": 15,
+        "ema_l": 30,
+        "signal_mw": 9
+    },
+
+    "so": {
+        "periods": 20,
+        "d_mw": 12
+    },
+
+    "rsi": {
+        "periods": 20,
+        "rsi_upper": 70,
+        "rsi_lower": 30
+    }
+}

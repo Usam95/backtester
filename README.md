@@ -53,3 +53,11 @@ The `Client` module is responsible for deploying the trained and optimized modul
 To setup your Binance client, please provide the necessary API credentials in the `credentials.py` file located in the `utilities` folder. You will need your own API keys from Binance for this purpose.
 
 Please ensure to keep your API keys secure and do not commit them into version control.
+
+## Supported Brokers and Markets
+
+Despite the fact that only cryptocurrency data was used and Binance has been integrated for live trading, the backtester can be utilized for backtesing for a variety of markets beyond cryptocurrencies. It can be applied to any market data, including stocks, commodities, forex, etc., provided the data is in a structured CSV format.
+
+The data must adhere to the following structure: `date, open, high, low, close, volume`. This ensures compatibility with the technical indicators and other functions within the backtesting framework.
+
+This flexibility allows you to perform historical simulation and analysis on a broad range of market data to refine and optimize your strategies.

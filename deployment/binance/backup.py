@@ -17,8 +17,12 @@ import warnings
 warnings.filterwarnings('ignore')
 import sys
 sys.path.append('../../utilities')
-sys.path.append('../../binance/backtesting/ml_backtesting')
-from Email import Email
+sys.path.append('../../backtesting/ml_backtesting')
+sys.path.append('../../backtesting/indicators')
+
+from indicators.ema_backtester import EMABacktester
+
+from utilities.email import Email
 
 from MlDataManager import MlDataManager
 from datetime import datetime
@@ -31,7 +35,7 @@ testnet = True
 
 
 
-class LongOnlyTrader():
+class LongOnlyTrader:
 
     def __init__(self, symbol, bar_length, units, position=0, testnet=True):
 

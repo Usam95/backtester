@@ -1,0 +1,47 @@
+{
+  "tickers_config": [
+    {
+      "ticker": "XRPUSDT",
+      "strategies": {
+        "ema": {
+          "ema_s": 12,
+          "ema_l": 20,
+          "timeframe": 1
+
+        },
+        "sma": {
+          "sma_s": 12,
+          "sma_l": 20,
+          "timeframe": 1
+        }
+      },
+      "bar_length": "1m",
+      "lookback_days": 1,
+      "units": 1000,
+      "position": 0,
+      "stop_loss": 0.05,
+      "take_profit": 0.05
+    },
+
+    {
+      "ticker": "BTCUSDT",
+      "strategies": {
+        "ema": {
+          "ema_s": 9,
+
+
+          "ema_l": 10,
+          "timeframe": 1
+
+        }
+      },
+      "bar_length": "1m",
+      "lookback_days": 1,
+      "units": 10,
+      "position": 0,
+      "stop_loss": 0.1,
+      "take_profit": 0.05
+    }
+
+  ]
+}

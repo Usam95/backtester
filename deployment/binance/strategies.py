@@ -1,6 +1,13 @@
 from abc import ABC, abstractmethod
 from enum import Enum
+import sys
+import os
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '', '..', '..')))
+from utilities.logger import Logger
+
+
+logger = Logger().get_logger()
 
 class Signal(Enum):
     BUY = 1
@@ -32,12 +39,17 @@ class SmaStrategy(StrategyModel):
 
     def get_signal(self, data):
         df = data.copy()
-        df["EMA_S"] = df["Close"].rolling(self.sma_s).mean()
-        df["EMA_L"] = df["Close"].rolling(self.sma_l).mean()
+        df["SMA_S"] = df["Close"].rolling(self.sma_s).mean()
+        df["SMA_L"] = df["Close"].rolling(self.sma_l).mean()
 
-        if df["EMA_S"].iloc[-1] > df["EMA_L"].iloc[-1]:
+        sma_s = round(df["SMA_S"].iloc[-1], 3)
+        sma_l = round(df["SMA_L"].iloc[-1], 3)
+        price = round(df["Close"].iloc[-1], 3)
+        logger.info(f"SMA Strategy: {sma_s=}, {sma_l=}, {price=}")
+
+        if df["SMA_S"].iloc[-1] > df["SMA_L"].iloc[-1]:
             return Signal.BUY
-        elif df["EMA_S"].iloc[-1] < df["EMA_L"].iloc[-1]:
+        elif df["SMA_S"].iloc[-1] < df["SMA_L"].iloc[-1]:
             return self.strategy_name, Signal.SELL
         else:
             return self.strategy_name, Signal.NEUTRAL
@@ -53,6 +65,7 @@ class EmaStrategy(StrategyModel):
         self.strategy_name = strategy_name
         self.ema_s = kwargs["ema_s"]
         self.ema_l = kwargs["ema_l"]
+        print(f"Constructor EMA: {self.strategy_name=}")
         print(f"Constructor EMA: {self.ema_s=}")
         print(f"Constructor EMA: {self.ema_l=}")
         self.max_periods = max(self.ema_s, self.ema_l)
@@ -61,6 +74,11 @@ class EmaStrategy(StrategyModel):
         df = data.copy()
         ema_s_col = df["Close"].ewm(span=self.ema_s, min_periods=self.ema_s).mean()
         ema_l_col = df["Close"].ewm(span=self.ema_l, min_periods=self.ema_l).mean()
+
+        ema_s = round(ema_s_col.iloc[-1], 3)
+        ema_l = round(ema_l_col.iloc[-1], 3)
+        price = round(df["Close"].iloc[-1], 3)
+        logger.info(f"EMA Strategy: {ema_s=}, {ema_l=}, {price=}")
 
         if ema_s_col.iloc[-1] > ema_l_col.iloc[-1]:
             return self.strategy_name, Signal.BUY

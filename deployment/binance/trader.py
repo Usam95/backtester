@@ -186,7 +186,7 @@ class LongOnlyTrader:
         self.data_completed_events = {ticker_config.ticker: threading.Event() for ticker_config in self.tickers_config}
         self.client_manager = BinanceClientManager(self.data_completed_events, testnet=True)
         self.report_manager = ReportManager()
-        self.logger = Logger()
+        self.logger = Logger().get_logger()
         self.logging_lock = Lock()
 
         self.running = True  # A flag to control threads

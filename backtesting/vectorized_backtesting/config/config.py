@@ -3,8 +3,7 @@ from typing import Optional
 from json import load
 import os
 
-BACKTESTER_CONFIG_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "backtester_config.json")
-STRATEGY_CONFIG_FILES = os.path.join(os.path.dirname(os.path.realpath(__file__)), "strategy_config.json")
+CONFIG_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "config.json")
 
 
 class StrategyConfig(BaseModel):
@@ -27,8 +26,10 @@ class Backtester(BaseModel):
     All configuration relevant backtesting and optimizing.
     """
 
-    strategy_conf: Optional[StrategyConfig] = None
+    strategy_conf: Optional[StrategyConfig]
     tickers: list[str]
+    metric: str
+    bayesian_opt: bool
     fetch_data: bool
     split_size: float
     hist_data_folder: str
@@ -42,7 +43,6 @@ class Backtester(BaseModel):
     multiple_only: bool
 
 
-
 def find_config_file(file_path):
     """Locate the configuration file."""
     if os.path.isfile(file_path):
@@ -50,8 +50,8 @@ def find_config_file(file_path):
     raise Exception(f"Config not found at {file_path}")
 
 
-def fetch_config_from_yaml(cfg_path):
-    """Parse YAML containing the package configuration."""
+def fetch_config_from_json(cfg_path):
+    """Parse JSON containing the package configuration."""
 
     if not cfg_path:
         cfg_path = find_config_file()
@@ -65,18 +65,14 @@ def fetch_config_from_yaml(cfg_path):
 
 def create_and_validate_config():
     """Run validation on config values."""
-    # parse backtester configuration
-    backtester_conf_file = find_config_file(BACKTESTER_CONFIG_FILE)
-    backtester_parsed_conf = fetch_config_from_yaml(backtester_conf_file)
+    # parse the merged configuration
+    conf_file = find_config_file(CONFIG_FILE)
+    parsed_conf = fetch_config_from_json(conf_file)
 
-    # parse technical indicator configuration
-    strategy_conf_file = find_config_file(STRATEGY_CONFIG_FILES)
-    strategy_parsed_conf = fetch_config_from_yaml(strategy_conf_file)
+    strategy_conf = StrategyConfig(**parsed_conf["strategy_conf"])
+    parsed_conf.pop("strategy_conf", None)
 
-    strategy_conf = StrategyConfig(**strategy_parsed_conf)
-    backtester_conf = Backtester(**backtester_parsed_conf)
-
-    backtester_conf.strategy_conf = strategy_conf
+    backtester_conf = Backtester(strategy_conf=strategy_conf, **parsed_conf)
 
     return backtester_conf
 

@@ -1,0 +1,81 @@
+
+{
+
+  "multiple_strategies": false,
+  "_comment": "accepted strategies: ema, sma, macd, bb, so, rsi",
+  "strategies_": ["sma"],
+  "strategies": ["macd", "ema", "sma", "so", "rsi", "bb"]
+  "bayesian_opt": true,
+
+   "_comment": "accepted perf measurement metrics: ema,  sma, macd, bb, so, rsi",
+  "metric": "outperf_net",
+
+
+  "strategy_conf":
+  {
+    "freq" : [5, 720, 5],
+
+    "ema": {
+        "ema_s": [10, 50, 5],
+        "ema_l": [15, 80, 5]
+    },
+
+   "sma": {
+        "sma_s": [10, 50, 5],
+        "sma_l": [50, 150, 10]
+    },
+
+   "bb": {
+        "sma": [5, 100, 10],
+        "dev": [1, 4, 0.25]
+    }
+   "macd": {
+        "ema_s": [5, 50, 5],
+        "ema_l": [20, 100, 10],
+        "signal_mw": [5, 40, 5]
+    },
+
+   "so": {
+        "periods": [10, 100, 10],
+        "d_mw": [5, 50, 5]
+    },
+
+   "rsi": {
+        "periods": [5, 40, 5],
+        "rsi_upper": [60, 95, 5],
+        "rsi_lower": [20, 45, 5]
+    }
+  },
+
+  "tickers": ["LTCUSDT", "XRPUSDT", "BTCUSDT", "TRXUSDT"],
+  "fetch_data": true,
+  "split_size": 0.2,
+  "hist_data_folder": "hist_data",
+  "output_folder": "results",
+
+  "retrieve_data": true,
+
+  "time_frame": {
+    "start_date": "",
+    "end_date": ""
+  },
+
+  "multiple_only": true,
+  "time_frame_": {
+    "start_date": "2018-06-01",
+    "end_date": "2018-09-01"
+  },
+  "ptc": 0.01
+}
+
+
+
+
+
+
+
+
+
+
+
+

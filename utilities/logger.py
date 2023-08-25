@@ -27,7 +27,7 @@ class Logger(metaclass=Singleton):
         try:
             # Setup custom logger
             self.logger = logging.getLogger()
-            self.logger.setLevel(logging.DEBUG)  # Allowing DEBUG level messages
+            self.logger.setLevel(logging.INFO)  # Allowing DEBUG level messages
 
             # Create formatter
             formatter = logging.Formatter('%(asctime)s %(levelname)s %(funcName)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')

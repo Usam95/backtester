@@ -4,12 +4,14 @@
       "ticker": "XRPUSDT",
       "strategies": {
         "ema": {
+          "name" : "ema",
           "ema_s": 12,
           "ema_l": 20,
           "timeframe": 1
 
         },
         "sma": {
+          "name": "sma",
           "sma_s": 12,
           "sma_l": 20,
           "timeframe": 1
@@ -27,9 +29,8 @@
       "ticker": "BTCUSDT",
       "strategies": {
         "ema": {
+          "name" : "ema",
           "ema_s": 9,
-
-
           "ema_l": 10,
           "timeframe": 1
 

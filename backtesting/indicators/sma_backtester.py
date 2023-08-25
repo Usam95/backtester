@@ -1,15 +1,24 @@
+# Standard libraries
 import os
 import sys
+from itertools import product
 
+# Third-party libraries
 import numpy as np
 import pandas as pd
+import optuna
 from tqdm import tqdm
-from itertools import product
-from utilities.data_plot import DataPlot
-from utilities.performance import Performance
-from backtester_base import VectorBacktesterBase
-from utilities.logger import Logger
 
+# Application/Library specific imports
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
+
+from backtester_base import VectorBacktesterBase
+from utilities.data_plot import DataPlot
+from utilities.logger import Logger
+from utilities.performance import Performance
+
+# Initialize logger
 logger = Logger().get_logger()
 
 
@@ -68,16 +77,41 @@ class SMABacktester(VectorBacktesterBase):
         data_resampled.dropna()
 
         ######### INSERT THE STRATEGY SPECIFIC CODE HERE ##################
-        ema_s = data_resampled["Close"].rolling(window=sma_s_val, min_periods=sma_s_val).mean()
-        ema_l = data_resampled["Close"].rolling(window=sma_l_val, min_periods=sma_l_val).mean()
+        sma_s = data_resampled["Close"].rolling(window=sma_s_val, min_periods=sma_s_val).mean()
+        sma_l = data_resampled["Close"].rolling(window=sma_l_val, min_periods=sma_l_val).mean()
         position = np.zeros(len(data_resampled))
-        position[ema_s > ema_l] = 1
+        position[sma_s > sma_l] = 1
         ###################################################################
         position = pd.Series(position, index=data_resampled.index).ffill().fillna(0)
         data_resampled = data_resampled.assign(position=position)
         self.results = data_resampled
 
-    def optimize_strategy(self, freq_range, sma_s_range, sma_l_range, metric="Multiple"):
+    def objective(self, trial):
+        freq = trial.suggest_int('freq', *self.freq_range)
+        sma_s_val = trial.suggest_int('sma_s', *self.sma_s_range)
+        sma_l_val = trial.suggest_int('sma_l', *self.sma_l_range)
+
+        if sma_l_val <= sma_s_val:
+            return float('inf')
+
+        self.prepare_data(freq, sma_s_val, sma_l_val)
+
+        if self.metric != "Multiple":
+            self.upsample()
+
+        self.run_backtest()
+
+        # set strategy data and calculate performance
+        self.perf_obj.set_data(self.results)
+        self.perf_obj.calculate_performance()
+
+        # Fetch the desired performance metric from the perf_obj instance based on the metric attribute
+        performance = getattr(self.perf_obj, self.metric)
+
+        # Return negative performance as Optuna tries to minimize the objective
+        return -performance
+
+    def optimize_strategy(self, freq_range, sma_s_range, sma_l_range, metric="Multiple", opt_method="grid"):
         '''
         Backtests strategy for different parameter values incl. Optimization and Reporting.
 
@@ -98,32 +132,51 @@ class SMABacktester(VectorBacktesterBase):
 
         # Use only Close prices
         self.data = self.data.loc[:, ["Close"]]
-        # performance_function = self.perf_obj.performance_functions[metric]
 
-        freqs = range(*freq_range)
-        sma_s = range(*sma_s_range)
-        sma_l = np.arange(*sma_l_range)  # NEW!!!
+        if opt_method == "grid":
+            # Grid search optimization
 
-        combinations = list(product(freqs, sma_s, sma_l))
-        # remove combinations where sma_s > sma_l
-        combinations = [(_, sma_s, sma_l) for (_, sma_s, sma_l) in combinations if sma_l > sma_s]  # filter the combinations list
-        # remove combinations there freq > 180 and not multiple of 30
-        combinations = list(filter(lambda x: x[0] <= 180 or x[0] % 30 == 0, combinations))
+            freqs = range(*freq_range)
+            sma_s = range(*sma_s_range)
+            sma_l = np.arange(*sma_l_range)
 
-        for (freq, sma_s_val, sma_l_val) in tqdm(combinations):
-            self.prepare_data(freq, sma_s_val, sma_l_val)
-            if metric != "Multiple":
-                self.upsample()
-            self.run_backtest()
-            # set strategy data and calculate performance
-            self.perf_obj.set_data(self.results)
-            self.perf_obj.calculate_performance()
-            # store strategy performance data for further plotting
-            params_dic = {"freq": freq, "sma_s": sma_s_val, "sma_l": sma_l_val}
-            self.dataploter.store_testcase_data(self.perf_obj, params_dic) # comb[0] is current data freq
+            combinations = list(product(freqs, sma_s, sma_l))
+            combinations = [(_, sma_s, sma_l) for (_, sma_s, sma_l) in combinations if sma_l > sma_s]
+            logger.info(
+                f"ema_backtester: Optimizing of {self.indicator} for {self.symbol} using in total {len(combinations)} combinations..")
 
-        logger.info(f"Total number of executed tests: {len(combinations)}.")
+            for (freq, sma_s_val, sma_l_val) in tqdm(combinations):
+                self.prepare_data(freq, sma_s_val, sma_l_val)
+                if self.metric != "Multiple":
+                    self.upsample()
+                self.run_backtest()
+                # set strategy data and calculate performance
+                self.perf_obj.set_data(self.results)
+                self.perf_obj.calculate_performance()
+                # store strategy performance data for further plotting
+                params_dic = {"freq": freq, "sma_s": sma_s_val, "sma_l": sma_s_val}
+                self.dataploter.store_testcase_data(self.perf_obj, params_dic)  # comb[0] is current data freq
 
+            logger.info(f"Total number of executed tests: {len(combinations)} ..")
+
+        elif opt_method == "bayesian":
+
+            # Bayesian optimization
+            self.freq_range = freq_range
+            self.sma_s_range = sma_s_range
+            self.sma_l_range = sma_l_range
+            self.metric = metric
+
+            study = optuna.create_study(direction='minimize')
+            study.optimize(self.objective, n_trials=1000)  # Set n_trials as desired
+            best_params = study.best_params
+            best_performance = -study.best_value
+
+            logger.info(f"Best parameters: {best_params}, Best performance: {best_performance}")
+            # Optionally store and visualize results
+            self.dataploter.store_testcase_data(self.perf_obj, best_params)
+            logger.info(
+                f"Optimization completed with best parameters: {best_params} and performance: {best_performance}")
 
     def find_best_strategy(self):
         ''' Finds the optimal strategy (global maximum) given the parameter ranges.
@@ -139,9 +192,11 @@ class SMABacktester(VectorBacktesterBase):
 
 
 if __name__ == "__main__":
+    filepath = "../../hist_data/XRPUSDT/XRPUSDT.parquet.gzip"
     symbol = "XRPUSDT"
-    start = ",2021-11-20"
+    start = "2022-06-20"
     end = "2022-08-20"
     ptc = 0.00007
-    ema = SMABacktester(filepath=filepath, symbol=symbol, start=start, end=end, tc=ptc)
-    ema.optimize_strategy((1, 30, 10), (10, 30, 10), (10, 50, 10), metric="Calmar")
+    sma = SMABacktester(filepath=filepath, symbol=symbol, start=None, end=end, tc=ptc)
+    sma.optimize_strategy((5, 10, 5), (10, 20, 5), (10, 40, 5), metric="outperf_net",  opt_method="grid")
+    sma.dataploter.store_data("../")

@@ -1,13 +1,24 @@
-
-from utilities.performance import Performance
-from utilities.data_plot import DataPlot
-from backtester_base import VectorBacktesterBase
-from tqdm import tqdm
-import numpy as np
+# Standard libraries
+import os
+import sys
 from itertools import product
-import pandas as pd
 
+# Third-party libraries
+import numpy as np
+import pandas as pd
+import optuna
+from tqdm import tqdm
+
+# Application/Library specific imports
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
+
+from backtester_base import VectorBacktesterBase
+from utilities.data_plot import DataPlot
 from utilities.logger import Logger
+from utilities.performance import Performance
+
+# Initialize logger
 logger = Logger().get_logger()
 
 
@@ -75,46 +86,74 @@ class BBBacktester(VectorBacktesterBase):
             data_resampled.dropna(inplace=True)
             self.results = data_resampled
 
-        def optimize_strategy(self, freq_range, window_range, dev_range, metric="Multiple"):  # Adj!!!
-            '''
-            Backtests strategy for different parameter values incl. Optimization and Reporting (Wrapper).
+        def objective(self, trial):
+            freq = trial.suggest_int('freq', *self.freq_range)
+            window = trial.suggest_int('window', *self.window_range)
+            dev = trial.suggest_float('dev', *self.dev_range)
 
-            Parameters
-            ============
-            freq_range: tuple
-                tuples of the form (start, end, step size).
+            self.prepare_data(freq, window, dev)
 
-            window_range: tuple
-                tuples of the form (start, end, step size).
+            if self.metric != "Multiple":
+                self.upsample()
 
-            dev_range: tuple
-                tuples of the form (start, end, step size).
+            self.run_backtest()
 
-            metric: str
-                performance metric to be optimized (can be: "Multiple", "Sharpe", "Sortino", "Calmar", "Kelly")
-            '''
+            # set strategy data and calculate performance
+            self.perf_obj.set_data(self.results)
+            self.perf_obj.calculate_performance()
 
+            # Fetch the desired performance metric from the perf_obj instance based on the metric attribute
+            performance = getattr(self.perf_obj, self.metric)
+
+            # Return negative performance as Optuna tries to minimize the objective
+            return -performance
+
+        def optimize_strategy(self, freq_range, window_range, dev_range, metric="Multiple", opt_method="grid"):
+            # Use only Close prices
             self.data = self.data.loc[:, ["Close"]]
-            # performance_function = self.perf_obj.performance_functions[metric]
+            self.metric = metric
 
-            freqs = range(*freq_range)
-            windows = range(*window_range)
-            devs = np.arange(*dev_range)  # NEW!!!
-            combinations = list(product(freqs, windows, devs))
+            if opt_method == "grid":
+                # Grid search optimization
+                freqs = range(*freq_range)
+                windows = range(*window_range)
+                devs = np.arange(*dev_range)
 
-            for (freq, window, dev) in tqdm(combinations):
-                self.prepare_data(freq, window, dev)
-                if metric != "Multiple":
-                    self.upsample()
-                self.run_backtest()
-                #performance.append(performance_function(self.results.strategy))
-                # set strategy data and calculate performance
-                self.perf_obj.set_data(self.results)
-                self.perf_obj.calculate_performance()
-                # store strategy performance data for further plotting
-                params_dic = {"freq": freq, "window": window, "stddev": dev}
-                self.dataploter.store_testcase_data(self.perf_obj, params_dic)  # comb[0] is current data freq
-            logger.info(f"Total number of executed tests: {len(combinations)}.")
+                combinations = list(product(freqs, windows, devs))
+                logger.info(
+                    f"BBBacktester: Optimizing of {self.indicator} for {self.symbol} using in total {len(combinations)} combinations..")
+
+                for (freq, window, dev) in tqdm(combinations):
+                    self.prepare_data(freq, window, dev)
+                    if metric != "Multiple":
+                        self.upsample()
+                    self.run_backtest()
+                    # set strategy data and calculate performance
+                    self.perf_obj.set_data(self.results)
+                    self.perf_obj.calculate_performance()
+                    # store strategy performance data for further plotting
+                    params_dic = {"freq": freq, "window": window, "stddev": dev}
+                    self.dataploter.store_testcase_data(self.perf_obj, params_dic)
+                logger.info(f"Total number of executed tests: {len(combinations)}.")
+
+            elif opt_method == "bayesian":
+                # Bayesian optimization
+                self.freq_range = freq_range
+                self.window_range = window_range
+                self.dev_range = dev_range
+                self.metric = metric
+
+                study = optuna.create_study(direction='minimize')
+                study.optimize(self.objective, n_trials=1000)  # Set n_trials as desired
+
+                best_params = study.best_params
+                best_performance = -study.best_value
+
+                logger.info(f"Best parameters: {best_params}, Best performance: {best_performance}")
+                # Optionally store and visualize results
+                self.dataploter.store_testcase_data(self.perf_obj, best_params)
+                logger.info(
+                    f"Optimization completed with best parameters: {best_params} and performance: {best_performance}")
 
         def find_best_strategy(self):
             ''' Finds the optimal strategy (global maximum) given the parameter ranges.

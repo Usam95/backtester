@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-from logger import Logger
+from utilities.logger import Logger
 logger = Logger().get_logger()
 
 

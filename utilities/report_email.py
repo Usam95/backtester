@@ -1,5 +1,5 @@
 import smtplib
-from email.message import EmailMessage
+from report_email.message import EmailMessage
 from utilities.credentials import *
 import time
 

@@ -66,7 +66,6 @@ class DataRetrieverBase:
             return candles
         else:
             return None
-        print(f"Loaded data of length: {len(candles)}")
 
     def ms_to_dt_utc(self, ms: int) -> datetime:
         return datetime.utcfromtimestamp(ms / 1000)

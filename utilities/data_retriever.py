@@ -4,7 +4,8 @@ import tqdm
 import pickle
 import sys
 import time
-from datetime import datetime, timedelta
+import datetime
+#from datetime import datetime, timedelta
 from credentials import *
 from logger import Logger
 from binance.client import Client
@@ -57,7 +58,7 @@ class DataRetriever:
     """
 
     def __init__(self, folder="../hist_data"):
-        self.folder = folder
+        self.hist_data_folder = folder
         self.logger = self.logger = Logger().get_logger()
         self.client = None
 
@@ -126,33 +127,48 @@ class DataRetriever:
     def get_ticker_historical_data(self, ticker, interval, start_t=None):
         max_attempts = 12
         attempt = 0
-        while True: 
-            try: 
 
-                now = datetime.now()
+        while attempt < max_attempts:
+            try:
+                now = datetime.datetime.now()
                 end_str = now.strftime("%Y-%m-%d")
-                bars = self.client.get_historical_klines(symbol=ticker, interval=interval, start_str=start_t, end_str=end_str)
+
+                # Ensure start_t is in string format
+                if isinstance(start_t, (datetime.date, datetime.datetime)):
+                    start_str = start_t.strftime("%Y-%m-%d")
+                else:
+                    start_str = start_t
+                self.logger.info(f"{ticker=}, {interval=}, {start_str=}, {end_str=}")
+                bars = self.client.get_historical_klines(symbol=ticker, interval=interval, start_str=start_str,
+                                                         end_str=end_str)
             except Exception as e:
-                self.logger.error(f"Could not retrieve data for {ticker}..", end = " | ")
+                self.logger.error(f"Could not retrieve data for {ticker}..")
                 self.logger.error(f"Error message: {e}")
                 self.logger.error("Trying to reconnect to server..")
-                
-            else: 
-                df = pd.DataFrame(bars)
-                return df 
-            
-            finally: 
-                # wait 5 seconds before trying to reconnect
-                time.sleep(5)
+
+                # Increment attempt
                 attempt += 1
                 self.logger.info(f"Attempt: {attempt}")
-                # Try to reconnect (assuming it was the connection error).
+
+                # Try to reconnect (assuming it was a connection error).
                 self.connect()
-                
-                # stop the programm if max attempts reached
-                if attempt >= max_attempts: 
-                    self.logger.error(f"Max attempts for reconnections achieved.. Exiting..")
-                    exit(1)
+
+                # wait 5 seconds before trying again
+                time.sleep(5)
+            else:
+                df = pd.DataFrame(bars, columns=["Open Time", "Open", "High", "Low", "Close", "Volume",
+                                                 "Close Time", "Quote Asset Volume", "Number of Trades",
+                                                 "Taker Buy Base Asset Volume", "Taker Buy Quote Asset Volume",
+                                                 "Ignore"])
+
+                df["Date"] = pd.to_datetime(df["Open Time"], unit="ms")
+                df = df[["Date", "Open", "High", "Low", "Close", "Volume"]].copy()
+
+                return df
+
+        # If loop completes and max_attempts is reached
+        self.logger.error(f"Max attempts for reconnections achieved.. Exiting..")
+        exit(1)
 
     def get_path(self, ticker):
         symbol_folder = os.path.join(self.hist_data_folder, ticker)
@@ -191,18 +207,19 @@ class DataRetriever:
         last_date = df.index[-1].date()
 
         # Check if update is needed
-        today = datetime.now().date()
+        today = datetime.datetime.now().date()
         if last_date >= today:
             self.logger.info(f"Data for {symbol} with granularity {interval} is up-to-date.")
             return
 
         # Step 3: Fetch and append new data
-        start_date = last_date + timedelta(days=1)
+        start_date = last_date + datetime.timedelta(days=1)
         new_data = self.get_ticker_historical_data(symbol, interval=interval, start_t=start_date)
 
         if new_data is not None and not new_data.empty:
             # Convert to desired format
             new_data["Date"] = pd.to_datetime(new_data.iloc[:, 0], unit="ms")
+            self.logger.info(new_data.columns)
             new_data = new_data[["Date", "Open", "High", "Low", "Close", "Volume"]].copy()
             new_data.set_index("Date", inplace=True)
 
@@ -242,8 +259,10 @@ class DataRetriever:
 
 
 if __name__ == "__main__":
-    symbols = ["ADAUSDT", "SOLUSDT", "DOTUSDT", "XRPUSDT"]
+
+    symbols = ["XRPUSDT", "ETHUSDT", "BTCUSDT", "TRXUSDT", "LTCUSDT"]
     dataRetriever = DataRetriever()
     dataRetriever.connect()
-    dataRetriever.tickers = symbols
-    dataRetriever.retrieve_all_historical_data()
+
+    for symbol in symbols:
+        dataRetriever.update_historical_data_for_symbol(symbol)

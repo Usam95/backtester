@@ -7,7 +7,7 @@ from datetime import datetime
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '', '..', '..')))
 
 # Local application/library specific imports
-from utilities.email import Email
+from utilities.report_email import Email
 from utilities.logger import Logger
 
 

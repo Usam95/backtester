@@ -13,7 +13,7 @@ from tqdm import tqdm
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
 
-from backtester_base import VectorBacktesterBase
+from .backtester_base import VectorBacktesterBase
 from utilities.data_plot import DataPlot
 from utilities.logger import Logger
 from utilities.performance import Performance
@@ -30,8 +30,8 @@ class SMABacktester(VectorBacktesterBase):
         self.perf_obj = Performance(symbol=symbol)
         self.dataploter = DataPlot(dataset, self.indicator, self.symbol)
 
-    def test_strategy(self, freq=5, SMA_S=50, SMA_L=200):  # Adj!!!
-        '''
+    def test_strategy(self, freq=5, sma_s_val=50, sma_l_val=200):
+        """
         Prepares the data and backtests the trading strategy incl. reporting (Wrapper).
 
         Parameters
@@ -44,31 +44,13 @@ class SMABacktester(VectorBacktesterBase):
 
         dev: int
             number of standard deviations to calculate upper and lower bands.
-        '''
-        self.freq = "{}min".format(freq)
-        self.SMA_S = SMA_S
-        self.SMA_L = SMA_L  # NEW!!!
+        """
 
-        self.prepare_data(freq, SMA_S, SMA_L)
-        self.upsample()
+        self.generate_signals(freq, sma_s_val, sma_l_val)
         self.run_backtest()
+        self.store_results(freq, sma_s_val, sma_l_val)
 
-        data = self.results.copy()
-        data["creturns"] = data["returns"].cumsum().apply(np.exp)
-        data["cstrategy"] = data["strategy"].cumsum().apply(np.exp)
-        self.results = data
-
-
-        # store the test results in the dataframe
-        # set strategy data and calculate performance
-        self.perf_obj.set_data(self.results)
-        self.perf_obj.calculate_performance()
-        # store strategy performance data for further plotting
-        params_dic = {"freq": freq, "SMA_S": SMA_S, "SMA_L": SMA_L}
-        self.dataploter.store_testcase_data(self.perf_obj, params_dic)  # comb[0] is current data freq
-        #self.print_performance()
-
-    def prepare_data(self, freq, sma_s_val, sma_l_val):  # Adj!!!
+    def generate_signals(self, freq, sma_s_val, sma_l_val):  # Adj!!!
         ''' Prepares the Data for Backtesting.
         '''
         freq = f"{freq}min"
@@ -86,6 +68,14 @@ class SMABacktester(VectorBacktesterBase):
         data_resampled = data_resampled.assign(position=position)
         self.results = data_resampled
 
+    def store_results(self, freq, sma_s_val, sma_l_val):
+        # set strategy data and calculate performance
+        self.perf_obj.set_data(self.results)
+        self.perf_obj.calculate_performance()
+        # store strategy performance data for further plotting
+        params_dic = {"freq": freq, "sma_s": sma_s_val, "sma_l": sma_l_val}
+        self.dataploter.store_testcase_data(self.perf_obj, params_dic)
+
     def objective(self, trial):
         freq = trial.suggest_int('freq', *self.freq_range)
         sma_s_val = trial.suggest_int('sma_s', *self.sma_s_range)
@@ -94,16 +84,15 @@ class SMABacktester(VectorBacktesterBase):
         if sma_l_val <= sma_s_val:
             return float('inf')
 
-        self.prepare_data(freq, sma_s_val, sma_l_val)
+        self.generate_signals(freq, sma_s_val, sma_l_val)
 
-        if self.metric != "Multiple":
+        if self.metric != "outperf_net":
             self.upsample()
 
         self.run_backtest()
 
-        # set strategy data and calculate performance
-        self.perf_obj.set_data(self.results)
-        self.perf_obj.calculate_performance()
+        # store performance results for current parameter combination
+        self.store_results(freq, sma_s_val, sma_l_val)
 
         # Fetch the desired performance metric from the perf_obj instance based on the metric attribute
         performance = getattr(self.perf_obj, self.metric)
@@ -111,7 +100,8 @@ class SMABacktester(VectorBacktesterBase):
         # Return negative performance as Optuna tries to minimize the objective
         return -performance
 
-    def optimize_strategy(self, freq_range, sma_s_range, sma_l_range, metric="Multiple", opt_method="grid"):
+    def optimize_strategy(self, freq_range, sma_s_range, sma_l_range,
+                          metric="outperf_net", opt_method="grid", bayesian_trials=100):
         '''
         Backtests strategy for different parameter values incl. Optimization and Reporting.
 
@@ -146,17 +136,12 @@ class SMABacktester(VectorBacktesterBase):
                 f"ema_backtester: Optimizing of {self.indicator} for {self.symbol} using in total {len(combinations)} combinations..")
 
             for (freq, sma_s_val, sma_l_val) in tqdm(combinations):
-                self.prepare_data(freq, sma_s_val, sma_l_val)
-                if self.metric != "Multiple":
+                self.generate_signals(freq, sma_s_val, sma_l_val)
+                if self.metric != "outperf_net":
                     self.upsample()
                 self.run_backtest()
-                # set strategy data and calculate performance
-                self.perf_obj.set_data(self.results)
-                self.perf_obj.calculate_performance()
-                # store strategy performance data for further plotting
-                params_dic = {"freq": freq, "sma_s": sma_s_val, "sma_l": sma_s_val}
-                self.dataploter.store_testcase_data(self.perf_obj, params_dic)  # comb[0] is current data freq
-
+                # store performance results for current parameter combination
+                self.store_results(freq, sma_s_val, sma_l_val)
             logger.info(f"Total number of executed tests: {len(combinations)} ..")
 
         elif opt_method == "bayesian":
@@ -168,7 +153,7 @@ class SMABacktester(VectorBacktesterBase):
             self.metric = metric
 
             study = optuna.create_study(direction='minimize')
-            study.optimize(self.objective, n_trials=1000)  # Set n_trials as desired
+            study.optimize(self.objective, n_trials=bayesian_trials)  # Set n_trials as desired
             best_params = study.best_params
             best_performance = -study.best_value
 

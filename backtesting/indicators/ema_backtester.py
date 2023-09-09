@@ -13,7 +13,7 @@ from tqdm import tqdm
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
 
-from backtester_base import VectorBacktesterBase
+from .backtester_base import VectorBacktesterBase
 from utilities.data_plot import DataPlot
 from utilities.logger import Logger
 from utilities.performance import Performance
@@ -30,8 +30,8 @@ class EMABacktester(VectorBacktesterBase):
         self.perf_obj = Performance(symbol=symbol)
         self.dataploter = DataPlot(dataset, self.indicator, self.symbol)
 
-    def test_strategy(self, freq=5, EMA_S=50, EMA_L=200):  # Adj!!!
-        '''
+    def test_strategy(self, freq=5, ema_s_val=50, ema_l_val=200):
+        """
         Prepares the data and backtests the trading strategy incl. reporting (Wrapper).
 
         Parameters
@@ -44,35 +44,13 @@ class EMABacktester(VectorBacktesterBase):
 
         dev: int
             number of standard deviations to calculate upper and lower bands.
-        '''
-        self.freq = "{}min".format(freq)
-        self.EMA_S = EMA_S
-        self.EMA_L = EMA_L  # NEW!!!
+        """
 
-        self.prepare_data(freq, EMA_S, EMA_L)
-        self.upsample()
+        self.generates_signals(freq, ema_s_val, ema_l_val)
         self.run_backtest()
+        self.store_results(freq, ema_s_val, ema_l_val)
 
-        data = self.results.copy()
-        data["creturns"] = data["returns"].cumsum().apply(np.exp)
-        data["cstrategy"] = data["strategy"].cumsum().apply(np.exp)
-
-        data["strategy_net"] = data.strategy - data.trades * ptc
-        data["cstrategy_net"] = data.strategy_net.cumsum().apply(np.exp)
-
-        self.results = data
-
-
-        # store the test results in the dataframe
-        # set strategy data and calculate performance
-        self.perf_obj.set_data(self.results)
-        self.perf_obj.calculate_performance()
-        # store strategy performance data for further plotting
-        params_dic = {"freq": freq, "EMA_S": EMA_S, "EMA_L": EMA_L}
-        self.dataploter.store_testcase_data(self.perf_obj, params_dic)  # comb[0] is current data freq
-        #self.print_performance()
-
-    def prepare_data(self, freq, ema_s_val, ema_l_val):  # Adj!!!
+    def generates_signals(self, freq, ema_s_val, ema_l_val):  # Adj!!!
         ''' Prepares the Data for Backtesting.
         '''
         freq = f"{freq}min"
@@ -91,6 +69,14 @@ class EMABacktester(VectorBacktesterBase):
         data_resampled = data_resampled.assign(position=position)
         self.results = data_resampled
 
+    def store_results(self, freq, ema_s_val, ema_l_val):
+        # set strategy data and calculate performance
+        self.perf_obj.set_data(self.results)
+        self.perf_obj.calculate_performance()
+        # store strategy performance data for further plotting
+        params_dic = {"freq": freq, "ema_s": ema_s_val, "ema_l": ema_l_val}
+        self.dataploter.store_testcase_data(self.perf_obj, params_dic)  # comb[0] is current data freq
+
     def objective(self, trial):
         freq = trial.suggest_int('freq', *self.freq_range)
         ema_s_val = trial.suggest_int('ema_s', *self.ema_s_range)
@@ -99,17 +85,14 @@ class EMABacktester(VectorBacktesterBase):
         if ema_l_val <= ema_s_val:
             return float('inf')
 
-        self.prepare_data(freq, ema_s_val, ema_l_val)
+        self.generates_signals(freq, ema_s_val, ema_l_val)
 
-        if self.metric != "Multiple":
+        if self.metric != "outperf_net":
             self.upsample()
 
-        #logger.info(self.results.columns)
         self.run_backtest()
-
-        # set strategy data and calculate performance
-        self.perf_obj.set_data(self.results)
-        self.perf_obj.calculate_performance()
+        # store performance results for current parameter combination
+        self.store_results(freq, ema_s_val, ema_l_val)
 
         # Fetch the desired performance metric from the perf_obj instance based on the metric attribute
         performance = getattr(self.perf_obj, self.metric)
@@ -117,7 +100,8 @@ class EMABacktester(VectorBacktesterBase):
         # Return negative performance as Optuna tries to minimize the objective
         return -performance
 
-    def optimize_strategy(self, freq_range, ema_s_range, ema_l_range, metric="outperf_net",  opt_method="grid"):
+    def optimize_strategy(self, freq_range, ema_s_range, ema_l_range,
+                          metric="outperf_net", opt_method="grid", bayesian_trials=100):
         # Use only Close prices
         self.metric = metric
         self.data = self.data.loc[:, ["Close"]]
@@ -133,16 +117,12 @@ class EMABacktester(VectorBacktesterBase):
             logger.info(f"ema_backtester: Optimizing of {self.indicator} for {self.symbol} using in total {len(combinations)} combinations..")
 
             for (freq, ema_s_val, ema_l_val) in tqdm(combinations):
-                self.prepare_data(freq, ema_s_val, ema_l_val)
-                if self.metric != "Multiple":
+                self.generates_signals(freq, ema_s_val, ema_l_val)
+                if self.metric != "outperf_net":
                     self.upsample()
                 self.run_backtest()
-                # set strategy data and calculate performance
-                self.perf_obj.set_data(self.results)
-                self.perf_obj.calculate_performance()
-                # store strategy performance data for further plotting
-                params_dic = {"freq": freq, "ema_s": ema_s_val, "ema_l": ema_l_val}
-                self.dataploter.store_testcase_data(self.perf_obj, params_dic) # comb[0] is current data freq
+                # store performance results for current parameter combination
+                self.store_results(freq, ema_s_val, ema_l_val)
 
             logger.info(f"Total number of executed tests: {len(combinations)} ..")
 
@@ -155,7 +135,7 @@ class EMABacktester(VectorBacktesterBase):
             self.metric = metric
 
             study = optuna.create_study(direction='minimize')
-            study.optimize(self.objective, n_trials=1000)  # Set n_trials as desired
+            study.optimize(self.objective, n_trials=bayesian_trials)  # Set n_trials as desired
             # Save ranges and metric for use in objective function
             best_params = study.best_params
             best_performance = -study.best_value
@@ -185,5 +165,5 @@ if __name__ == "__main__":
     end = "2022-08-20"
     ptc = 0.01
     ema = EMABacktester(filepath=filepath, symbol=symbol, start=start, end=end, tc=ptc)
-    ema.optimize_strategy((5, 10, 5), (10, 20, 5), (10, 40, 5), metric="outperf_net",  opt_method="grid")
+    ema.optimize_strategy((5, 100, 5), (10, 500, 4), (15, 80, 5), metric="outperf_net",  opt_method="bayesian")
     ema.dataploter.store_data("../")

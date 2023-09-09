@@ -13,7 +13,7 @@ from tqdm import tqdm
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
 
-from backtester_base import VectorBacktesterBase
+from .backtester_base import VectorBacktesterBase
 from utilities.data_plot import DataPlot
 from utilities.logger import Logger
 from utilities.performance import Performance
@@ -22,7 +22,7 @@ from utilities.performance import Performance
 logger = Logger().get_logger()
 
 
-class RSIBacktester(VectorBacktesterBase):
+class RsiBacktester(VectorBacktesterBase):
 
     def __init__(self, filepath, symbol, tc=0.00007, dataset="training", multiple_only=True, start=None, end=None):
         super().__init__(filepath=filepath, symbol=symbol, start=start, end=end, tc=tc, dataset=dataset)
@@ -30,7 +30,7 @@ class RSIBacktester(VectorBacktesterBase):
         self.perf_obj = Performance(symbol=symbol, multiple_only=multiple_only)
         self.dataploter = DataPlot(dataset, self.indicator, symbol)
 
-    def test_strategy(self, freq=5,  periods=None, rsi_upper=None, rsi_lower=None):  # Adj!!!
+    def test_strategy(self, freq=5,  periods=None, rsi_lower=None, rsi_upper=None):  # Adj!!!
         '''
         Prepares the data and backtests the trading strategy incl. reporting (Wrapper).
 
@@ -45,33 +45,12 @@ class RSIBacktester(VectorBacktesterBase):
         dev: int
             number of standard deviations to calculate upper and lower bands.
         '''
-        self.freq = "{}min".format(freq)
-        self.periods = periods
-        self.rsi_upper = rsi_upper
-        self.rsi_lower = rsi_lower
 
-        self.prepare_data(freq, periods, rsi_lower, rsi_upper)
-        #self.upsample()
+        self.generate_signals(freq, periods, rsi_lower, rsi_upper)
         self.run_backtest()
+        self.store_results(freq, periods, rsi_lower, rsi_upper)
 
-        #data = self.results.copy()
-        #data["creturns"] = data["returns"].cumsum().apply(np.exp)
-        #data["cstrategy"] = data["strategy"].cumsum().apply(np.exp)
-
-        #data["strategy_net"] = data.strategy - data.trades * ptc
-        #data["cstrategy_net"] = data.strategy_net.cumsum().apply(np.exp)
-
-        #self.results = data
-
-        # store the test results in the dataframe
-        # set strategy data and calculate performance
-        #self.perf_obj.set_data(self.results)
-        #self.perf_obj.calculate_performance()
-        # store strategy performance data for further plotting
-        #params_dic = {"freq": freq, "periods": periods, "rsi_lower": rsi_lower, "rsi_upper": rsi_upper}
-        #self.dataploter.store_testcase_data(self.perf_obj, params_dic)  # comb[0] is current data freq
-
-    def prepare_data(self, freq, periods, rsi_lower, rsi_upper):
+    def generate_signals(self, freq, periods, rsi_lower, rsi_upper):
         ''' Prepares the Data for Backtesting.
         '''
         freq = f"{freq}min"
@@ -94,6 +73,14 @@ class RSIBacktester(VectorBacktesterBase):
         position = pd.Series(position, index=data_resampled.index).ffill().fillna(0)
         self.results = data_resampled.assign(position=position).dropna()
 
+    def store_results(self, freq, periods, rsi_low, rsi_up):
+        # set strategy data and calculate performance
+        self.perf_obj.set_data(self.results)
+        self.perf_obj.calculate_performance()
+        # store strategy performance data for further plotting
+        params_dic = {"freq": freq, "periods": periods, "rsi_lower": rsi_low, "rsi_upper": rsi_up}
+        self.dataploter.store_testcase_data(self.perf_obj, params_dic)
+
     def objective(self, trial):
         freq = trial.suggest_int('freq', *self.freq_range)
         periods = trial.suggest_int('periods', *self.periods_range)
@@ -103,16 +90,14 @@ class RSIBacktester(VectorBacktesterBase):
         if rsi_upper <= rsi_lower:
             return float('inf')
 
-        self.prepare_data(freq, periods, rsi_lower, rsi_upper)
+        self.generate_signals(freq, periods, rsi_lower, rsi_upper)
 
         if self.metric != "Multiple":
             self.upsample()
 
         self.run_backtest()
-
-        # set strategy data and calculate performance
-        self.perf_obj.set_data(self.results)
-        self.perf_obj.calculate_performance()
+        # store performance results for current parameter combination
+        self.store_results(freq, periods, rsi_lower, rsi_upper)
 
         # Fetch the desired performance metric from the perf_obj instance based on the metric attribute
         performance = getattr(self.perf_obj, self.metric)
@@ -120,8 +105,8 @@ class RSIBacktester(VectorBacktesterBase):
         # Return negative performance as Optuna tries to minimize the objective
         return -performance
 
-    def optimize_strategy(self, freq_range, periods_range, rsi_lower_range, rsi_upper_range, metric="Multiple",
-                          opt_method="grid"):
+    def optimize_strategy(self, freq_range, periods_range, rsi_lower_range, rsi_upper_range,
+                          metric="outperf_net", opt_method="grid", bayesian_trials=100):
         self.data = self.data.loc[:, ["Close"]]
         self.metric = metric
 
@@ -137,16 +122,12 @@ class RSIBacktester(VectorBacktesterBase):
                 f"RSIBacktester: Optimizing of {self.indicator} for {self.symbol} using in total {len(combinations)} combinations..")
 
             for (freq, periods, rsi_low, rsi_up) in tqdm(combinations):
-                self.prepare_data(freq, periods, rsi_low, rsi_up)
+                self.generate_signals(freq, periods, rsi_low, rsi_up)
                 if metric != "Multiple":
                     self.upsample()
                 self.run_backtest()
-
-                self.perf_obj.set_data(self.results)
-                self.perf_obj.calculate_performance()
-
-                params_dic = {"freq": freq, "periods": periods, "rsi_lower": rsi_low, "rsi_upper": rsi_up}
-                self.dataploter.store_testcase_data(self.perf_obj, params_dic)
+                # store performance results for current parameter combination
+                self.store_results(freq, periods, rsi_low, rsi_up)
 
             logger.info(f"Total number of executed tests: {len(combinations)}.")
 
@@ -157,7 +138,7 @@ class RSIBacktester(VectorBacktesterBase):
             self.rsi_upper_range = rsi_upper_range
 
             study = optuna.create_study(direction='minimize')
-            study.optimize(self.objective, n_trials=50)  # Adjust n_trials as needed
+            study.optimize(self.objective, n_trials=bayesian_trials)  # Adjust n_trials as needed
 
             best_params = study.best_params
             best_performance = -study.best_value
@@ -191,9 +172,8 @@ if __name__ == "__main__":
     periods = (5, 40, 5)
     rsi_upper = (60, 100, 5)
     rsi_lower = (20, 50, 5)
-    rsi = RSIBacktester(filepath=filepath, symbol=symbol, start=start, end=end, tc=ptc)
+    rsi = RsiBacktester(filepath=filepath, symbol=symbol, start=start, end=end, tc=ptc)
     start_t = time.time()
     rsi.optimize_strategy(freqs, periods, rsi_lower, rsi_upper, metric="strategy_multiple_net", opt_method="grid")
     end_t = time.time()
     rsi.dataploter.store_data("../")
-    #print(f"INFO: total time took to execute with 6 threads: {round(((end_t - start_t) / 60), 2)} mins.")

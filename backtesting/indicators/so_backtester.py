@@ -13,7 +13,7 @@ from tqdm import tqdm
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
 
-from backtester_base import VectorBacktesterBase
+from .backtester_base import VectorBacktesterBase
 from utilities.data_plot import DataPlot
 from utilities.logger import Logger
 from utilities.performance import Performance
@@ -22,16 +22,44 @@ from utilities.performance import Performance
 logger = Logger().get_logger()
 
 
-class SoStrategy(VectorBacktesterBase):
+class SoBacktester(VectorBacktesterBase):
 
     def __init__(self, filepath, symbol, tc=0.00007, dataset="training", start=None, end=None):
         super().__init__(filepath=filepath, symbol=symbol, start=start, end=end, tc=tc, dataset=dataset)
-        self.indicator = "StochasticOscillator"
+        self.indicator = "SO"
         self.perf_obj = Performance(symbol=symbol)
         self.dataploter = DataPlot(dataset, self.indicator, self.symbol)
         self.tc = tc
 
-    def prepare_data(self, freq, k_period, d_period):
+    def test_strategy(self, freq, k_period, d_period):
+        """
+        Prepares the data and backtests the trading strategy incl. reporting (Wrapper).
+
+        Parameters
+        ============
+        freq: int
+            data frequency/granularity to work with (in minutes)
+
+        window: int
+            time window (number of bars) to calculate the simple moving average price (SMA).
+
+        dev: int
+            number of standard deviations to calculate upper and lower bands.
+        """
+
+        self.generate_signals(freq, k_period, d_period)
+        self.run_backtest()
+        self.store_results(freq, k_period, d_period)
+
+    def store_results(self, freq, k_period, d_period):
+        # set strategy data and calculate performance
+        self.perf_obj.set_data(self.results)
+        self.perf_obj.calculate_performance()
+        # store strategy performance data for further plotting
+        params_dic = {"freq": freq, "k_period": k_period, "d_period": d_period}
+        self.dataploter.store_testcase_data(self.perf_obj, params_dic)
+
+    def generate_signals(self, freq, k_period, d_period):
         ''' Prepares the Data for Backtesting. '''
         freq = f"{freq}min"
         data_resampled = self.data.resample(freq).last().dropna().iloc[:-1].copy()
@@ -52,25 +80,22 @@ class SoStrategy(VectorBacktesterBase):
 
     def objective(self, trial):
         freq = trial.suggest_int('freq', *self.freq_range)
+
+        # Adjust the range for k_period to be less than d_period_range's minimum.
         k_period = trial.suggest_int('k_period', *self.k_period_range)
         d_period = trial.suggest_int('d_period', *self.d_period_range)
 
-        self.prepare_data(freq, k_period, d_period)
-
-        if self.metric != "Multiple":
-            self.upsample()
-
+        self.generate_signals(freq, k_period, d_period)
         self.run_backtest()
-
-        # set strategy data and calculate performance
-        self.perf_obj.set_data(self.results)
-        self.perf_obj.calculate_performance()
-
+        # store performance results for current parameter combination
+        self.store_results(freq, k_period, d_period)
         performance = getattr(self.perf_obj, self.metric)
 
         return -performance
 
-    def optimize_strategy(self, freq_range, k_period_range, d_period_range, metric="outperf_net", opt_method="grid"):
+    def optimize_strategy(self, freq_range, k_period_range, d_period_range,
+                          metric="outperf_net", opt_method="grid", bayesian_trials=100):
+
         self.data = self.data.loc[:, ["Close", "High", "Low"]]
         if opt_method == "grid":
             freqs = range(*freq_range)
@@ -78,18 +103,17 @@ class SoStrategy(VectorBacktesterBase):
             d_periods = np.arange(*d_period_range)
 
             combinations = list(product(freqs, k_periods, d_periods))
+            combinations = [(_, k_periods, d_periods) for (_, k_periods, d_periods) in combinations if d_periods > k_periods]
             logger.info(
                 f"Optimizing of {self.indicator} for {self.symbol} using in total {len(combinations)} combinations..")
 
             for (freq, k_period, d_period) in tqdm(combinations):
-                self.prepare_data(freq, k_period, d_period)
-                if self.metric != "Multiple":
+                self.generate_signals(freq, k_period, d_period)
+                if self.metric != "outperf_net":
                     self.upsample()
                 self.run_backtest()
-                self.perf_obj.set_data(self.results)
-                self.perf_obj.calculate_performance()
-                params_dic = {"freq": freq, "k_period": k_period, "d_period": d_period}
-                self.dataploter.store_testcase_data(self.perf_obj, params_dic)
+                # store performance results for current parameter combination
+                self.store_results(freq, k_period, d_period)
 
             logger.info(f"Total number of executed tests: {len(combinations)} ..")
 
@@ -100,7 +124,7 @@ class SoStrategy(VectorBacktesterBase):
             self.metric = metric
 
             study = optuna.create_study(direction='minimize')
-            study.optimize(self.objective, n_trials=1000)
+            study.optimize(self.objective, n_trials=bayesian_trials)
             best_params = study.best_params
             best_performance = -study.best_value
 

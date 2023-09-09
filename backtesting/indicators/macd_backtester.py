@@ -10,7 +10,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.
 from utilities.data_plot import DataPlot
 from utilities.performance import Performance
 from itertools import product
-from backtester_base import VectorBacktesterBase
+from .backtester_base import VectorBacktesterBase
 
 from utilities.logger import Logger
 logger = Logger().get_logger()
@@ -70,9 +70,8 @@ class MACDBacktester(VectorBacktesterBase):
                                                                                             self.EMA_L, self.signal_mw,
                                                                                             self.start, self.end)
 
-
-    def test_strategy(self, freq=5, ema_s=50, ema_l=200, signal_mw=9):  # Adj!!!
-        '''
+    def test_strategy(self, freq=5, ema_s_val=50, ema_l_val=200, signal_mw=9):
+        """
         Prepares the data and backtests the trading strategy incl. reporting (Wrapper).
 
         Parameters
@@ -85,26 +84,13 @@ class MACDBacktester(VectorBacktesterBase):
 
         dev: int
             number of standard deviations to calculate upper and lower bands.
-        '''
-        self.freq = "{}min".format(freq)
-        self.prepare_data(freq, ema_s, ema_l, signal_mw)
-        self.upsample()
+        """
+
+        self.generate_signals(freq, ema_s_val, ema_l_val, signal_mw)
         self.run_backtest()
+        self.store_results(freq, ema_s_val, ema_l_val, signal_mw)
 
-        data = self.results.copy()
-        data["creturns"] = data["returns"].cumsum().apply(np.exp)
-        data["cstrategy"] = data["strategy"].cumsum().apply(np.exp)
-        self.results = data
-
-        # store the test results in the dataframe
-        # set strategy data and calculate performance
-        self.perf_obj.set_data(self.results)
-        self.perf_obj.calculate_performance()
-        # store strategy performance data for further plotting
-        params_dic = {"freq": freq, "ema_s": ema_s, "ema_l": ema_l, "signal_mw": signal_mw}
-        self.dataploter.store_testcase_data(self.perf_obj, params_dic)  # comb[0] is current data freq
-
-    def prepare_data(self, freq, ema_s_val, ema_l_val, signal_mw):  # Adj!!!
+    def generate_signals(self, freq, ema_s_val, ema_l_val, signal_mw):  # Adj!!!
         ''' Prepares the Data for Backtesting.
         '''
         freq = f"{freq}min"
@@ -130,6 +116,14 @@ class MACDBacktester(VectorBacktesterBase):
         print(f"Len of data_resampled 2: {len(data_resampled)}")
         print(f"Len of self.results: {len(self.results)}")
 
+    def store_results(self, freq, ema_s_val, ema_l_val, signal_mw):
+        # set strategy data and calculate performance
+        self.perf_obj.set_data(self.results)
+        self.perf_obj.calculate_performance()
+        # store strategy performance data for further plotting
+        params_dic = {"freq": freq, "ema_s_val": ema_s_val, "ema_l_val": ema_l_val, "signal_mw": signal_mw}
+        self.dataploter.store_testcase_data(self.perf_obj, params_dic)  # comb[0] is current data freq
+
     def objective(self, trial):
         freq = trial.suggest_int('freq', *self.freq_range)
         ema_s_val = trial.suggest_int('ema_s', *self.ema_s_range)
@@ -139,12 +133,12 @@ class MACDBacktester(VectorBacktesterBase):
         if ema_l_val <= ema_s_val:
             return float('inf')
 
-        self.prepare_data(freq, ema_s_val, ema_l_val, signal_mw)
+        self.generate_signals(freq, ema_s_val, ema_l_val, signal_mw)
+        if self.metric != "outperf_net":
+            self.upsample()
         self.run_backtest()
-
-        # set strategy data and calculate performance
-        self.perf_obj.set_data(self.results)
-        self.perf_obj.calculate_performance()
+        # store performance results for current parameter combination
+        self.store_results(freq, ema_s_val, ema_l_val, signal_mw)
 
         # Fetch the desired performance metric from the perf_obj instance based on the metric attribute
         performance = getattr(self.perf_obj, self.metric)
@@ -152,8 +146,8 @@ class MACDBacktester(VectorBacktesterBase):
         # Return negative performance as Optuna tries to minimize the objective
         return -performance
 
-    def optimize_strategy(self, freq_range, ema_s_range, ema_l_range, signal_mw_range, metric="Multiple",
-                          opt_method="grid"):
+    def optimize_strategy(self, freq_range, ema_s_range, ema_l_range, signal_mw_range,
+                          metric="outperf_net", opt_method="grid", bayesian_trials=100):
         '''Backtests strategy for different parameter values incl. Optimization and Reporting (Wrapper).
 
         Parameters
@@ -188,18 +182,15 @@ class MACDBacktester(VectorBacktesterBase):
             ema_pairs = [(ema_s, ema_l) for ema_s in ema_s_vals for ema_l in ema_l_vals if ema_l > ema_s]
             combinations = list(product(freqs, ema_pairs, signal_mws))
 
-            logger.info(
-                f"macd_backtester: Optimizing of {self.indicator} for {self.symbol} using in total {len(combinations)} combinations..")
+            logger.info(f"macd_backtester: Optimizing of {self.indicator} for {self.symbol} using in total {len(combinations)} combinations..")
 
-            for (freq, (ema_s, ema_l), signal_mw) in tqdm(combinations):
-                self.prepare_data(freq, ema_s, ema_l, signal_mw)
-                if metric != "Multiple":
+            for (freq, (ema_s_val, ema_l_val), signal_mw) in tqdm(combinations):
+                self.generate_signals(freq, ema_s_val, ema_l_val, signal_mw)
+                if metric != "outperf_net":
                     self.upsample()
                 self.run_backtest()
-                self.perf_obj.set_data(self.results)
-                self.perf_obj.calculate_performance()
-                params_dic = {"freq": freq, "ema_s": ema_s, "ema_l": ema_l, "Signal_Mw": signal_mw}
-                self.dataploter.store_testcase_data(self.perf_obj, params_dic)
+                # store performance results for current parameter combination
+                self.store_results(freq, ema_s_val, ema_l_val, signal_mw)
 
             logger.info(f"Total number of executed tests: {len(combinations)}.")
 
@@ -210,7 +201,7 @@ class MACDBacktester(VectorBacktesterBase):
             self.signal_mw_range = signal_mw_range
 
             study = optuna.create_study(direction='minimize')
-            study.optimize(self.objective, n_trials=1000)  # Set n_trials as desired
+            study.optimize(self.objective, n_trials=bayesian_trials)  # Set n_trials as desired
 
             best_params = study.best_params
             best_performance = -study.best_value

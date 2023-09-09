@@ -3,11 +3,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
+import sys
 
 from sklearn.model_selection import train_test_split
+# Append the path to sys.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from utilities.logger import Logger
 
 logger = Logger().get_logger()
+
 
 class VectorBacktesterBase:
     def __init__(self, filepath, symbol, tc=0.00007, start=None, end=None, dataset="training"):
@@ -32,19 +38,25 @@ class VectorBacktesterBase:
         '''
 
         _, file_extension = os.path.splitext(self.filepath)
+
         if file_extension == ".gzip":
             self.data = pd.read_parquet(self.filepath)
         else:
             self.data = pd.read_csv(self.filepath, parse_dates=["Date"], index_col="Date")
 
-        #self.data["returns"] = np.log(self.data.Close / self.data.Close.shift(1))
         if 'Unnamed: 0' in self.data.columns:
             self.data.drop(columns=['Unnamed: 0'], inplace=True)
 
-        if len(self.start) > 0 and len(self.end) > 0:
-            self.data = self.data.loc[self.start:self.end]
+        # Adjusting for the conditions you mentioned
+        if self.start == "" or self.start not in self.data.index:
+            self.start = self.data.index[0].strftime('%Y-%m-%d %H:%M:%S')
+            logger.info(f"Start date not provided or not in data. Using first available date: {self.start}")
 
-        logger.info(f"backtester_base: Load data with {len(self.data)} samples.")
+        if self.end == "" or self.end not in self.data.index:
+            self.end = self.data.index[-1].strftime('%Y-%m-%d %H:%M:%S')
+            logger.info(f"End date not provided or not in data. Using last available date: {self.end}")
+
+        self.data = self.data.loc[self.start:self.end]
 
     def train_test_split(self):
         print(f"Length bevore splitting: {len(self.data)}")
@@ -64,38 +76,47 @@ class VectorBacktesterBase:
             print(f"ERROR: Please specify the dataset to be used.")
 
     def select_data(self, start, end):
-        ''' Selects sub-sets of the financial data. '''
+        """ Selects sub-sets of the financial data. """
+
         self.data = self.data[(self.data.index >= start) & (self.data.index <= end)].copy()
 
     def run_backtest(self):
-        ''' Runs the strategy backtest.
-        '''
+        """ Runs the strategy backtest. """
+
         trades = self.results["position"].diff().abs().shift(1)
         strategy = self.results["position"].shift(1) * self.results["returns"]
         strategy_net = strategy - trades * self.tc
+        # calculate cumulative performance data
+        creturns = self.results["returns"].cumsum().apply(np.exp)
+        cstrategy = strategy.cumsum().apply(np.exp)
+
         self.results = self.results.assign(strategy=strategy,
                                            trades=trades,
-                                           strategy_net=strategy_net)
+                                           strategy_net=strategy_net,
+                                           creturns=creturns,
+                                           cstrategy=cstrategy)
         self.results.dropna(inplace=True)
 
     def upsample(self):
-        '''  Upsamples/copies trading positions back to higher frequency.
-        '''
+        """  Upsamples/copies trading positions back to higher frequency. """
 
         data = self.data.copy()
         resamp = self.results.copy()
+
         """ Upsample the data DataFrame to the same frequency as results DataFrame.
             Set the index of data to be equal to the index of resamp and 
             use the ffill method to forward-fill missing values.
         """
+        resamp = resamp[~resamp.index.duplicated(keep='first')]
+        data = data[~data.index.duplicated(keep='first')]
+        resamp = resamp[resamp.index >= data.index.min()]
         data = data.reindex(resamp.index, method='ffill')
         data['position'] = resamp['position']
-
+        data['returns'] = resamp['returns']
         self.results = data
 
     def plot_results(self, leverage=False):
-        ''' Plots the performance of the trading strategy and compares to "buy and hold".
-        '''
+        """ Plots the performance of the trading strategy and compares to "buy and hold". """
         if self.results is None:
             print("Run test_strategy() first.")
         elif leverage:
@@ -108,8 +129,8 @@ class VectorBacktesterBase:
             self.results[["creturns", "cstrategy"]].plot(title=title, figsize=(12, 8))
 
     def visualize_many(self):
-        ''' Plots parameter values vs. Performance.
-        '''
+        """ Plots parameter values vs. Performance.
+        """
         if self.results_overview is None:
             print("Run optimize_strategy() first.")
         else:
@@ -121,14 +142,14 @@ class VectorBacktesterBase:
             plt.show()
 
     def add_sessions(self, visualize=False):
-        '''
+        """
         Adds/Labels Trading Sessions and their compound returns.
 
         Parameter
         ============
         visualize: bool, default False
             if True, visualize compound session returns over time
-        '''
+        """
 
         if self.results is None:
             print("Run test_strategy() first.")
@@ -142,7 +163,7 @@ class VectorBacktesterBase:
             plt.show()
 
     def add_stop_loss(self, sl_thresh, report=True):
-        '''
+        """
         Adds Stop Loss to the Strategy.
 
         Parameter
@@ -152,7 +173,7 @@ class VectorBacktesterBase:
 
         report: bool, default True
             if True, print Performance Report incl. Stop Loss.
-        '''
+        """
 
         self.sl_thresh = sl_thresh
 
@@ -172,7 +193,7 @@ class VectorBacktesterBase:
             self.print_performance()
 
     def add_take_profit(self, tp_thresh, report=True):
-        '''
+        """
         Adds Take Profit to the Strategy.
 
         Parameter
@@ -182,7 +203,7 @@ class VectorBacktesterBase:
 
         report: bool, default True
             if True, print Performance Report incl. Take Profit.
-        '''
+        """
         self.tp_thresh = tp_thresh
 
         if self.results is None:
@@ -219,8 +240,8 @@ class VectorBacktesterBase:
             return group
 
     def print_performance(self, perf_obj, **kwargs):
-        ''' Calculates and prints various Performance Metrics.
-        '''
+        """ Calculates and prints various Performance Metrics.
+        """
 
         data = self.results.copy()
 

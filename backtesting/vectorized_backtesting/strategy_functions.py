@@ -6,7 +6,7 @@ from backtesting.indicators.sma_backtester import SMABacktester
 from backtesting.indicators.macd_backtester import MACDBacktester
 from backtesting.indicators.rsi_backtester import RSIBacktester
 from backtesting.indicators.bb_backtester import BBBacktester
-from config import config
+from config import backward_config
 from sys import exit
 
 from utilities.logger import Logger

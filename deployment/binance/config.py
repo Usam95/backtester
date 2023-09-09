@@ -16,7 +16,7 @@ CONFIG_FILE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "co
 class Strategy(BaseModel):
     ema: Optional[Dict[str, Any]]
     sma: Optional[Dict[str, Any]]
-    # ... add other strategies here as necessary
+    # ..other strategies
 
 
 class TickerConfig(BaseModel):

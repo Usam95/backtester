@@ -3,10 +3,10 @@ from typing import Optional
 from json import load
 import os
 
-CONFIG_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "config.json")
+CONFIG_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "backward_config.json")
 
 
-class StrategyConfig(BaseModel):
+class StrategiesConfig(BaseModel):
     """
     Configuration of technical indicator parameters
     to use for optimizing.
@@ -20,37 +20,22 @@ class StrategyConfig(BaseModel):
     rsi: dict[str, list[int]]
 
 
-class SingleTestConfig(BaseModel):
-    ema: dict[str, int]
-    sma: dict[str, int]
-    bb: dict[str, int]
-    macd: dict[str, int]
-    so: dict[str, int]
-    rsi: dict[str, int]
-
-
-class Backtester(BaseModel):
+class BacktesterConfig(BaseModel):
     """
     All configuration relevant backtesting and optimizing.
     """
 
-    strategy_conf: Optional[StrategyConfig]
-    single_test_conf: Optional[SingleTestConfig]
-    tickers: list[str]
-    single_test: bool
+    strategies_config: Optional[StrategiesConfig]
+    symbols: list[str]
     metric: str
     opt_method: str
     bayesian_trials: int
-    fetch_data: bool
-    split_size: float
     hist_data_folder: str
     output_folder: str
-    retrieve_data: bool
     time_frame: dict[str, str]
     multiple_strategies: bool
     strategies: list[str]
     ptc: float
-    multiple_only: bool
 
 
 def find_config_file(file_path):
@@ -79,12 +64,9 @@ def create_and_validate_config():
     conf_file = find_config_file(CONFIG_FILE)
     parsed_conf = fetch_config_from_json(conf_file)
 
-    strategy_conf = StrategyConfig(**parsed_conf["strategy_conf"])
-    parsed_conf.pop("strategy_conf", None)
+    strategies_config = StrategiesConfig(**parsed_conf["strategies_config"])
+    parsed_conf.pop("strategies_config", None)
 
-    backtester_conf = Backtester(strategy_conf=strategy_conf, **parsed_conf)
+    backtester_conf = BacktesterConfig(strategies_config=strategies_config, **parsed_conf)
 
     return backtester_conf
-
-
-config = create_and_validate_config()

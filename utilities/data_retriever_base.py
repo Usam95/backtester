@@ -3,19 +3,21 @@ import pandas as pd
 from typing import Optional
 from datetime import datetime
 import requests
+import os
 
 
 class DataRetrieverBase:
     def __init__(self):
         self._base_url = "https://api.binance.com"
+        self.futures = False
 
     def _make_request(self, endpoint: str, query_parameters: dict):
         response = requests.get(self._base_url + endpoint, params=query_parameters)
         if response.status_code == 200:
             return response.json()
         else:
-            print("Error while making request to %s: %s (status code = %s)",
-                  endpoint, response.json(), response.status_code)
+            print(f"Error while making request to {endpoint}: {response.json()} (status code = {response.status_code})")
+
             return None
 
     def _get_symbols(self) -> list[str]:
@@ -86,12 +88,9 @@ class DataRetrieverBase:
         collection = []
 
         while start_time < end_time:
-            print(f"In get_ticker_hist_data_for_period: {start_time=}, {end_time=}:")
-            print(f"Calling: get_historical_data() function")
             data = self.get_historical_data(symbol, start_time=start_time, end_time=end_time, limit=limit)
             try:
-                print("BINANCE" + " " + symbol + " : Collected " + str(len(data)) + " initial data from " + str(
-                    self.ms_to_dt_local(data[0][0])) + " to " + str(self.ms_to_dt_local(data[-1][0])))
+                print(f"BINANCE {symbol} : Collected {len(data)} initial data from {self.ms_to_dt_local(data[0][0])} to {self.ms_to_dt_local(data[-1][0])}")
                 start_time = int(data[-1][0] + 1000)
                 collection += data
                 time.sleep(0.01)
@@ -100,3 +99,30 @@ class DataRetrieverBase:
                 collection += data
                 break
         return collection
+
+
+if __name__ == "__main__":
+    retriever = DataRetrieverBase()
+
+    # Define the time period for historical data
+    start_time = int(datetime(2018, 1, 1).timestamp() * 1000)
+    end_time = int(datetime.now().timestamp() * 1000)
+
+    # Check if the main directory exists, if not, create it
+    main_dir = "historical_data"
+    if not os.path.exists(main_dir):
+        os.makedirs(main_dir)
+
+    for symbol in ["XRPUSDT", "ETHUSDT", "BTCUSDT", "TRXUSDT", "LTCUSDT"]:
+        df = retriever.get_historical_data_as_df(symbol, start_time, end_time)
+
+        # Create a sub-directory for the symbol if it doesn't exist
+        symbol_dir = os.path.join(main_dir, symbol)
+        if not os.path.exists(symbol_dir):
+            os.makedirs(symbol_dir)
+
+        # Save the data in .parquet.gzip format
+        parquet_file_path = os.path.join(symbol_dir, f"{symbol}.parquet.gzip")
+        df.to_parquet(parquet_file_path, compression='gzip')
+
+        print(f"Saved {symbol} data to {parquet_file_path}.")

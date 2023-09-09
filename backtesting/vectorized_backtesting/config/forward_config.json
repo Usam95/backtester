@@ -1,0 +1,199 @@
+{
+    "strategies": [
+        "macd",
+        "ema",
+        "sma",
+        "so",
+        "rsi",
+        "bb"
+    ],
+    "_comment": "accepted perf measurement metrics: outperf_net,  calmar, sharpe, sortino",
+    "metric": "outperf_net",
+    "symbols": [
+        "XRPUSDT",
+        "LTCUSDT",
+        "TRXUSDT",
+        "ETHUSDT",
+        "BTCUSDT"
+    ],
+    "hist_data_folder": "../../hist_data",
+    "output_folder": "results/forward",
+    "time_frame": {
+        "start_date": "2023-01-01 00:00:00",
+        "end_date": "",
+        "split_data": "2022-12-31 23:59:00"
+    },
+    "ptc": 0.00075,
+    "strategies_config": {
+        "BTCUSDT": {
+            "bb": {
+                "freq": 75,
+                "window": 30,
+                "dev": 4
+            },
+            "ema": {
+                "freq": 45,
+                "ema_s_val": 14,
+                "ema_l_val": 120
+            },
+            "macd": {
+                "freq": 120,
+                "ema_s_val": 54,
+                "ema_l_val": 195,
+                "signal_mw": 35
+            },
+            "rsi": {
+                "freq": 20,
+                "periods": 50,
+                "rsi_upper": 80,
+                "rsi_lower": 25
+            },
+            "sma": {
+                "freq": 50,
+                "sma_s_val": 11,
+                "sma_l_val": 115
+            },
+            "so": {
+                "freq": 125,
+                "k_period": 95,
+                "d_period": 100
+            }
+        },
+        "ETHUSDT": {
+            "bb": {
+                "freq": 35,
+                "window": 25,
+                "dev": 4
+            },
+            "ema": {
+                "freq": 40,
+                "ema_s_val": 10,
+                "ema_l_val": 120
+            },
+            "macd": {
+                "freq": 95,
+                "ema_s_val": 54,
+                "ema_l_val": 175,
+                "signal_mw": 50
+            },
+            "rsi": {
+                "freq": 75,
+                "periods": 45,
+                "rsi_upper": 80,
+                "rsi_lower": 25
+            },
+            "sma": {
+                "freq": 60,
+                "sma_s_val": 16,
+                "sma_l_val": 90
+            },
+            "so": {
+                "freq": 115,
+                "k_period": 55,
+                "d_period": 100
+            }
+        },
+        "LTCUSDT": {
+            "bb": {
+                "freq": 55,
+                "window": 40,
+                "dev": 2
+            },
+            "ema": {
+                "freq": 125,
+                "ema_s_val": 50,
+                "ema_l_val": 200
+            },
+            "macd": {
+                "freq": 125,
+                "ema_s_val": 38,
+                "ema_l_val": 195,
+                "signal_mw": 25
+            },
+            "rsi": {
+                "freq": 110,
+                "periods": 40,
+                "rsi_upper": 60,
+                "rsi_lower": 30
+            },
+            "sma": {
+                "freq": 120,
+                "sma_s_val": 46,
+                "sma_l_val": 185
+            },
+            "so": {
+                "freq": 125,
+                "k_period": 100,
+                "d_period": 100
+            }
+        },
+        "TRXUSDT": {
+            "bb": {
+                "freq": 20,
+                "window": 145,
+                "dev": 4
+            },
+            "ema": {
+                "freq": 75,
+                "ema_s_val": 34,
+                "ema_l_val": 45
+            },
+            "macd": {
+                "freq": 90,
+                "ema_s_val": 58,
+                "ema_l_val": 185,
+                "signal_mw": 30
+            },
+            "rsi": {
+                "freq": 95,
+                "periods": 35,
+                "rsi_upper": 95,
+                "rsi_lower": 30
+            },
+            "sma": {
+                "freq": 30,
+                "sma_s_val": 26,
+                "sma_l_val": 200
+            },
+            "so": {
+                "freq": 110,
+                "k_period": 70,
+                "d_period": 65
+            }
+        },
+        "XRPUSDT": {
+            "bb": {
+                "freq": 75,
+                "window": 40,
+                "dev": 4
+            },
+            "ema": {
+                "freq": 85,
+                "ema_s_val": 58,
+                "ema_l_val": 200
+            },
+            "macd": {
+                "freq": 110,
+                "ema_s_val": 46,
+                "ema_l_val": 190,
+                "signal_mw": 45
+            },
+            "rsi": {
+                "freq": 35,
+                "periods": 35,
+                "rsi_upper": 70,
+                "rsi_lower": 25
+            },
+            "sma": {
+                "freq": 120,
+                "sma_s_val": 36,
+                "sma_l_val": 105
+            },
+            "so": {
+                "freq": 115,
+                "k_period": 95,
+                "d_period": 85
+            }
+        }
+    }
+}

@@ -106,24 +106,6 @@ class DataRetriever:
             pickle.dump(self.tickers, fp)
             self.logger.into(f"Stored the list of symbols to be updated in the file {filename}.")
 
-    def store_df(self, df, path):
-        try:
-            # Convert timestamp to datetime and set as index
-            df["Date"] = pd.to_datetime(df.iloc[:, 0], unit="ms")
-            df = df[["Date", "Open", "High", "Low", "Close", "Volume"]].copy()
-            df.set_index("Date", inplace=True)
-
-            symbol = os.path.basename(path)
-            path = os.path.join(path, f"{symbol}.csv")
-            self.logger.info(f"Storing data for {symbol} into the file {path}.")
-            df.to_csv(path)
-
-        except Exception as e:
-            self.logger.error(f"Error occurred while storing the DataFrame: {e}")
-
-        except Exception as e:
-            self.logger.error(f"Error occurred while storing the DataFrame: {e}")
-
     def get_ticker_historical_data(self, ticker, interval, start_t=None):
         max_attempts = 12
         attempt = 0
@@ -199,6 +181,29 @@ class DataRetriever:
             self.logger.error(f"ERROR: Unsupported file format: {file_extension} for ticker {ticker}")
             raise ValueError(f"Unsupported file format: {file_extension} for ticker {ticker}")
 
+    def store_df(self, df, path, parquet=True):
+        try:
+            if parquet:
+                # Convert relevant columns from string to float
+                df['Open'] = df['Open'].astype(float)
+                df['High'] = df['High'].astype(float)
+                df['Low'] = df['Low'].astype(float)
+                df['Close'] = df['Close'].astype(float)
+                df['Volume'] = df['Volume'].astype(float)
+                df.to_parquet(path, compression='gzip', engine='pyarrow')
+            else:
+                # Convert timestamp to datetime and set as inde
+                symbol = os.path.basename(path)
+                path = os.path.join(path, f"{symbol}.csv")
+                self.logger.info(f"Storing data for {symbol} into the file {path}.")
+                df.to_csv(path)
+
+        except Exception as e:
+            self.logger.error(f"Error occurred while storing the DataFrame: {e}")
+
+        except Exception as e:
+            self.logger.error(f"Error occurred while storing the DataFrame: {e}")
+
     def update_historical_data_for_symbol(self, symbol, interval="1m"):
         # Step 1: Read the existing data
         df = self.load_data(symbol)
@@ -228,8 +233,7 @@ class DataRetriever:
 
             # Store the updated data
             path = self.get_path(symbol)
-            df.to_csv(path)
-
+            self.store_df(df, path)
             self.logger.info(f"Data for {symbol} with granularity {interval} updated successfully.")
         else:
             self.logger.info(f"No new data found for {symbol} with granularity {interval}.")
@@ -260,9 +264,11 @@ class DataRetriever:
 
 if __name__ == "__main__":
 
-    symbols = ["XRPUSDT", "ETHUSDT", "BTCUSDT", "TRXUSDT", "LTCUSDT"]
+    symbols = ["XRPUSDT", "BTCUSDT", "TRXUSDT", "LTCUSDT"]
     dataRetriever = DataRetriever()
     dataRetriever.connect()
 
     for symbol in symbols:
         dataRetriever.update_historical_data_for_symbol(symbol)
+    #dataRetriever.tickers = symbols
+    # dataRetriever.retrieve_all_historical_data()

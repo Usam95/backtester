@@ -12,7 +12,6 @@ class StrategyConfig(BaseModel):
     to use for optimizing.
     """
     freq: list[int]
-    metric: str
     ema: dict[str, list[int]]
     sma: dict[str, list[int]]
     bb: dict[str, list[int]]
@@ -21,15 +20,27 @@ class StrategyConfig(BaseModel):
     rsi: dict[str, list[int]]
 
 
+class SingleTestConfig(BaseModel):
+    ema: dict[str, int]
+    sma: dict[str, int]
+    bb: dict[str, int]
+    macd: dict[str, int]
+    so: dict[str, int]
+    rsi: dict[str, int]
+
+
 class Backtester(BaseModel):
     """
     All configuration relevant backtesting and optimizing.
     """
 
     strategy_conf: Optional[StrategyConfig]
+    single_test_conf: Optional[SingleTestConfig]
     tickers: list[str]
+    single_test: bool
     metric: str
-    bayesian_opt: bool
+    opt_method: str
+    bayesian_trials: int
     fetch_data: bool
     split_size: float
     hist_data_folder: str
@@ -37,7 +48,6 @@ class Backtester(BaseModel):
     retrieve_data: bool
     time_frame: dict[str, str]
     multiple_strategies: bool
-    ml_strategy: bool
     strategies: list[str]
     ptc: float
     multiple_only: bool

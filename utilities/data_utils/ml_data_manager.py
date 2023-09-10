@@ -1,15 +1,10 @@
-import pandas as pd
 import os
+import pandas as pd
 import numpy as np
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
 
-from scipy.linalg import svd
-from scipy import stats
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
+
 from sklearn.decomposition import TruncatedSVD
-from sklearn.manifold import TSNE
-from sklearn.preprocessing import StandardScaler
 from matplotlib.ticker import MaxNLocator
 
 from sklearn.compose import ColumnTransformer
@@ -25,19 +20,16 @@ class MlDataManager:
         self.y_train = None
         self.X_val = None
         self.y_val = None
-        self.y_pred = None
         self.features = None
 
-    def get_path(self, symbol):
+    def _get_path(self, symbol):
         symbol_folder = os.path.join(self.hist_data_folder, symbol)
         folder_contents = os.listdir(symbol_folder)
-        if f"{symbol}.parquet.gzip" in folder_contents:
-            data_path = os.path.join(symbol_folder, f"{symbol}.parquet.gzip")
-            return data_path
-        elif f"{symbol}.csv" in folder_contents:
-            data_path = os.path.join(symbol_folder, f"{symbol}.csv")
-            return data_path
-        else:
+        file_formats = [f"{symbol}.parquet.gzip", f"{symbol}.csv"]
+
+        for file_format in file_formats:
+            if file_format in folder_contents:
+                return os.path.join(symbol_folder, file_format)
             print(f"ERROR: Could not find any data for {symbol}..")
             return None
 
@@ -46,27 +38,25 @@ class MlDataManager:
         Set data:
         :param Pandas DataFrame data: Historical data of cryptocurrency.
         """
-        self.data = data.copy()
+        self.data = data.copy().astype(float)
 
     def load_data(self, symbol):
         data_path = self.get_path(symbol)
         if os.path.exists(data_path):
             _, file_extension = os.path.splitext(data_path)
             if file_extension == ".gzip":
-                self.data = pd.read_parquet(data_path)
+                self.data = pd.read_parquet(data_path).astype(float)
             else:
-                self.data = pd.read_csv(data_path, parse_dates=["Date"], index_col="Date")
+                self.data = pd.read_csv(data_path, parse_dates=["Date"], index_col="Date").astype(float)
             self.data.fillna(method="ffill", inplace=True)
         else:
             print(f"ERROR: The path {data_path} does not exist.")
 
-    def down_sample(self, freq, parse_dates=False):
-        freq = "{}min".format(freq)
-        volume = self.data["Volume"].resample(freq).sum().iloc[:-1]
+    def down_sample(self, freq):
+        freq_str = f"{freq}min"
+        volume = self.data["Volume"].resample(freq_str).sum().iloc[:-1]
         self.data = self.data.loc[:, self.data.columns != "Volume"].resample(freq).last().iloc[:-1]
         self.data["Volume"] = volume
-        if not parse_dates:
-            self.data.reset_index(drop=True, inplace=True)
 
     def preprocess_data(self, short_mavg=10, long_mavg=60, transform="standardize", freq=60):
 
@@ -92,99 +82,6 @@ class MlDataManager:
             self.clean()
             self.standardize()
 
-    # Add Features
-    def add_features(self):
-        # add EMA
-        self.add_ema(n=10)
-        self.add_ema(n=30)
-        self.add_ema(n=200)
-
-        # add RSI
-        self.add_rsi(n=10)
-        self.add_rsi(n=30)
-        self.add_rsi(n=200)
-
-        # add STO
-        self.add_sto(n=10)
-        self.add_sto(n=30)
-        self.add_sto(n=200)
-
-        # add MOM
-        self.add_sto(n=10)
-        self.add_sto(n=30)
-        self.add_sto(n=200)
-
-        # add ROC
-        self.add_roc(n=10)
-        self.add_roc(n=30)
-        self.add_roc(n=200)
-
-        # add MA
-        self.add_ma(n=10)
-        self.add_ma(n=30)
-        self.add_ma(n=200)
-        # add OBV
-        self.add_obv()
-
-        # add Returns
-        self.add_returns()
-    # Calculation of moving average
-
-    def add_returns(self):
-        self.data["returns"] = np.log(self.data.Close / self.data.Close.shift())
-    def add_ma(self, n):
-
-        ma_str = 'MA_' + str(n)
-        self.data[ma_str] = pd.Series(self.data['Close'].rolling(n, min_periods=n).mean(), name='MA_' + str(n))
-
-    def add_obv(self):
-        self.data["OBV"] = (np.sign(self.data["Close"].diff()) * self.data["Volume"]).fillna(0).cumsum()
-
-    def add_ema(self, n): 
-        ema_str = 'EMA_' + str(n)
-        self.data[ema_str] = pd.Series(self.data['Close'].ewm(span=n, min_periods=n).mean(), name=ema_str)
-
-    def add_mom(self, n):
-        mom_str = 'Momentum_' + str(n)
-        self.data[mom_str] = pd.Series(self.data['Close'].diff(n), name=mom_str)
-
-    # calculation of relative strength index
-    def add_rsi(self, n):
-        delta = self.data["Close"].diff() #.dropna()
-        u = delta * 0
-        d = u.copy()
-        u[delta > 0] = delta[delta > 0]
-        d[delta < 0] = -delta[delta < 0]
-        u[u.index[n-1]] = np.mean(u[:n]) # first value is sum of avg gains
-        d[d.index[n-1]] = np.mean(d[:n]) # first value is sum of avg losses
-        rs = u.ewm(com=n-1, adjust=False).mean() / d.ewm(com=n-1, adjust=False).mean()
-        rsi_str = 'RSI_' + str(n)
-        self.data[rsi_str] = 100 - 100 / (1 + rs)
-
-    # calculation of rate of change
-    def add_roc(self, n):
-        M = self.data["Close"].diff(n - 1)
-        N = self.data["Close"].shift(n - 1)
-        roc_str = 'ROC_' + str(n)
-        self.data[roc_str] = pd.Series(((M / N) * 100), name=roc_str)
-
-    def add_sto(self, n: int) -> None:
-        stod_str = 'STOD_' + str(n)
-        stock_str = 'STOCK_' + str(n)
-        self.data[stock_str] = ((self.data["Close"] - self.data["Low"].rolling(n).min())
-                               / (self.data["High"].rolling(n).max() - self.data["Low"].rolling(n).min())) * 100
-        self.data[stod_str] = self.data[stock_str].rolling(3).mean()
-
-    def add_target(self, short_mavg=10, long_mavg=60):
-        # Initialize the `signals` DataFrame with the `signal` column
-        # datas['PriceMove'] = 0.0
-        # Create short simple moving average over the short window
-        self.data['short_mavg'] = self.data['Close'].rolling(window=short_mavg, min_periods=1, center=False).mean()
-        # Create long simple moving average over the long window
-        self.data['long_mavg'] = self.data['Close'].rolling(window=long_mavg, min_periods=1, center=False).mean()
-        # Create signals
-        self.data['signal'] = np.where(self.data['short_mavg'] > self.data['long_mavg'], 1, 0)
-
     def convert_to_floats(self):
         self.X_train = self.X_train.astype(float)
         self.X_val = self.X_val.astype(float)
@@ -198,12 +95,12 @@ class MlDataManager:
         else:
             self.data.drop(columns=["Volume", "Open", "High", "Low", "Close"], inplace=True)
 
-    def scale(self):
+    def _scale(self):
         scaler = MinMaxScaler()
         self.X_train = pd.DataFrame(scaler.fit_transform(self.X_train), columns=self.X_train.columns, index=self.X_train.index)
         self.X_val = pd.DataFrame(scaler.transform(self.X_val), columns=self.X_val.columns, index=self.X_val.index)
 
-    def standardize(self):
+    def _standardize(self):
         remainders = ["returns"]
         if self.training:
             self.features = [col for col in self.X_train.columns if col not in remainders]
@@ -249,7 +146,6 @@ class MlDataManager:
             print("=" * 80)
 
     def perform_svd(self, ncomps=50, plot=True):
-
         self.svd = TruncatedSVD(n_components=ncomps)
         svd_fit = self.svd.fit(self.X_train_scaled_df)
 

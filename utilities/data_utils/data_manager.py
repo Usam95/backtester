@@ -154,7 +154,7 @@ if __name__ == "__main__":
 
     print(manager.results.columns)
     manager.results.to_csv(f"../strategies/{symbol}_preprocessed.csv")
-   # print(manager.params_loader.indicator_params)
+   #  rint(manager.params_loader.indicator_params)
     # paramLoader = ParameterLoader()
     # paramLoader.set_symbol("VGXUSDT")
     #

@@ -15,7 +15,6 @@ class FeatureEngineer:
         """Initialize the FeatureEngineer with a dataset."""
         self.data = data.copy().astype(float)
         self._validate_data()
-        self.add_features()
 
     def _validate_data(self):
         """Validate the input data for necessary columns."""
@@ -40,11 +39,13 @@ class FeatureEngineer:
         self._add_rolling_cum_returns()
         self._add_rolling_cum_range()
         self._add_day_of_week()
-        self. _calculate_range()
+        self._calculate_range()
+
+        return self.data.copy()
 
     def _add_returns(self):
         """Calculate and add the log returns to the dataset."""
-        self.data["returns"] = np.log(self.data.Close / self.data.Close.shift())
+        self.data["Returns"] = np.log(self.data.Close / self.data.Close.shift())
 
     def _add_ma(self, n):
         """Add moving average over a window of n periods."""
@@ -53,6 +54,8 @@ class FeatureEngineer:
     def _add_obv(self):
         """Add On-Balance Volume indicator."""
         self.data["OBV"] = (np.sign(self.data["Close"].diff()) * self.data["Volume"]).fillna(0).cumsum()
+        # Transform OBV to handle negative values and reduce magnitude
+        self.data['OBV'] = np.sign(self.data['OBV']) * np.log1p(np.abs(self.data['OBV']))
 
     def _add_ema(self, n):
         """Add Exponential Moving Average over a window of n periods."""
@@ -84,16 +87,100 @@ class FeatureEngineer:
                                (self.data["High"].rolling(n).max() - self.data["Low"].rolling(n).min())) * 100
         self.data[stod_str] = self.data[stock_str].rolling(3).mean()
 
-    def _add_target(self, short_mavg=10, long_mavg=60):
-        """Add target signal based on moving averages crossover."""
-        self.data['short_mavg'] = self.data['Close'].rolling(window=short_mavg, min_periods=1, center=False).mean()
-        self.data['long_mavg'] = self.data['Close'].rolling(window=long_mavg, min_periods=1, center=False).mean()
-        self.data['signal'] = np.where(self.data['short_mavg'] > self.data['long_mavg'], 1, 0)
-        return self.data
+    def add_target(self, config):
+        strategy_target = config.target.strategy
+        """
+        Calculate a target variable based on a given strategy.
+
+        Args:
+        - data (pd.DataFrame): The input data with historical prices and indicators.
+        - target (str): The name of the target strategy to calculate. Options: 'Simple', 'MA_Relative', 'Momentum', 'ROC', 'RSI_Cross'.
+
+        Returns:
+        - pd.DataFrame: The dataframe with a new column 'Signal' containing the binary target.
+        """
+
+        if strategy_target == 'Simple':
+            """
+            Compare the current close price to the next close price. 
+            If the next close is higher, then it's an "up" movement (label=1). 
+            Otherwise, it's a "down" movement (label=0).
+            """
+            self.data['Signal'] = np.where(self.data['Close'].shift(-1) > self.data['Close'], 1, 0)
+
+        elif strategy_target == 'MA_Relative':
+            """
+            Compare the current close price to its short-term moving average. 
+            If the close is above the moving average and rising, it's an "up" (label=1). 
+            If below and falling, it's "down" (label=0).
+            """
+            self.data['Signal'] = np.where((self.data['Close'] > self.data['MA_10']) & (self.data['Close'].shift(-1) > self.data['Close']), 1, 0)
+
+        elif strategy_target == 'Momentum':
+            """
+            If the momentum is positive and rising, it's an "up" (label=1). 
+            If negative and falling, it's "down" (label=0)
+            """
+            self.data['Signal'] = np.where(
+                (self.data['Momentum_10'] > 0) & (self.data['Momentum_10'].shift(-1) > self.data['Momentum_10']), 1, 0)
+
+        elif strategy_target == 'ROC':
+            """
+            If the rate of change (ROC) is positive and increasing, label as "up" (label=1). 
+            If ROC is negative and decreasing, label as "down" (label=0).
+            """
+            self.data['Signal'] = np.where((self.data['ROC_10'] > 0) & (self.data['ROC_10'].shift(-1) > self.data['ROC_10']), 1, 0)
+
+        elif strategy_target == 'RSI_Cross':
+            """
+             If RSI crosses above a predefined threshold (like 30), suggesting moving out from an oversold region, label as "up" (label=1). 
+             If RSI crosses below a certain level (like 70), indicating moving into an overbought territory, label as "down" (label=0).
+            """
+            self.data['Signal'] = np.where((self.data['RSI_10'] > 30) & (self.data['RSI_10'].shift(1) <= 30), 1,
+                                            np.where((self.data['RSI_10'] < 70) & (self.data['RSI_10'].shift(1) >= 70), 0, np.nan))
+
+        elif strategy_target == 'Returns_based':
+            """
+            Predict if the returns of the next period are positive.
+            """
+            self.data['Signal'] = np.where(self.data['Returns'].shift(-1) > 0, 1, 0)
+
+        elif strategy_target == 'Exceed_Avg_Returns':
+            """
+            Predict if the returns of the next period are positive.
+            """
+            N = config.target.N or 10
+            self.data['Signal'] = np.where(self.data['Returns'].shift(-1) > self.data['Returns'].rolling(N).mean(), 1, 0)
+
+        elif strategy_target == 'Volatility_Breakout':
+            """
+            Predict if the absolute returns (as a measure of volatility) of the next period will exceed the average absolute returns of the past N periods.
+            This can be an indication of a breakout or a major market event.
+            """
+            N = config.target.N or 10
+            self.data['Signal'] = np.where(abs(self.data['Returns'].shift(-1)) > abs(self.data['Returns'].rolling(N).mean()), 1, 0)
+
+        elif strategy_target == 'Exceed_Threshold':
+            """
+            Set a threshold (e.g., 1% or 0.01 as a fraction) and predict if the returns for the next period will exceed this threshold.
+            """
+            threshold = config.target.threshold or 0.01
+            self.data['Signal'] = np.where(self.data['Returns'].shift(-1) > threshold, 1, 0)
+
+        elif strategy_target == 'Consecutive_Increases':
+            """
+            Predict if the next period's returns will mark the third consecutive increase in returns. This can capture trending behavior.
+            """
+            self.data['Signal'] = np.where(
+                (self.data['Returns'] > 0) & (self.data['Returns'].shift(1) > 0)
+                & (self.data['Returns'].shift(2) > 0) & ( self.data['Returns'].shift(3) < 0), 1, 0)
+
+        else:
+            raise ValueError(f"Target strategy '{strategy_target}' not recognized. Please provide the valid strategy.")
 
     def _add_rolling_cum_returns(self):
         """Add rolling cumulative returns."""
-        self.data["Roll_Rets"] = self.data["returns"].rolling(window=30).sum()
+        self.data["Roll_Rets"] = self.data["Returns"].rolling(window=30).sum()
 
     def _add_rolling_cum_range(self):
         """Add rolling average range."""

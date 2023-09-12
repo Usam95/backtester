@@ -1,0 +1,10 @@
+{
+    "models": [
+        {
+            "model": "LinearRegression",
+            "params": {
+                "normalize": [true, false]
+            }
+        }
+    ]
+}

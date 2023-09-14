@@ -1,0 +1,93 @@
+\documentclass[12pt, a4paper]{report} % 'report' or 'book' is suitable for project documentation.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Package Imports
+%\usepackage[utf8]{inputenc} % commented out as per your instruction
+%\usepackage[T1]{fontenc} % commented out as per your instruction
+\usepackage{graphicx}  % for including images
+\usepackage{listings}  % for including code
+\usepackage{hyperref}  % for hyperlinks
+\usepackage{amsmath}   % for advanced math typesetting
+\usepackage{geometry}  % for custom margins if needed
+\usepackage{pdfpages}
+\usepackage{longtable}
+\usepackage{lscape}
+\usepackage{subfig}
+\usepackage{makecell}
+\usepackage{colortbl}
+
+% ref packages
+%\usepackage{nameref} % commented out as per your instruction
+%\usepackage{varioref} % commented out as per your instruction
+%\usepackage{cleveref} % commented out as per your instruction
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\renewcommand\theadalign{bc}
+\renewcommand\theadfont{\bfseries}
+\renewcommand\theadgape{\Gape[4pt]}
+\renewcommand\cellgape{\Gape[4pt]}
+\lstset{basicstyle=\linespread{0.8}, numbers=left, aboveskip=20pt, belowskip=20pt}
+%\addbibresource{doc}
+
+% M$-Word-style comments: define you own!
+%\defcomment{fk}{green!50!blue!25!white}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Configurations
+\graphicspath{{./images/}} % if you have an 'images' folder
+
+\title{Backtesting and Deploying Algo Trading Strategies}
+\author{Usam Sersultanov}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+% Manually create the title page
+\begin{titlepage}
+    \centering
+
+    % Include the logo at the top of the page
+	\vspace*{-2cm} % Move the logo a bit higher
+    \includegraphics[scale=1, width=\textwidth, keepaspectratio]{./imgs/logo8.png}
+	\vspace*{1cm}
+
+    % Title with adjusted breaking
+    {\Huge \bfseries Backtesting and Deploying \\
+    Algo Trading Strategies\par}
+    \vspace{1cm}
+	
+    % Author's name
+    {\Large Usam Sersultanov\par}
+    \vspace{5cm}
+
+    % Review History Table with adjustments
+    %\vspace*{\stretch{1.5}} % Adjusts the space
+    %\noindent % This ensures the table takes up the full width
+    %{\large  \textbf{Review History}} \\ % Title above the table without gray background
+    %\vspace{0.1cm} % Added space between the table name and the table itself
+    %\begin{longtable}{|p{1.5cm}|p{4cm}|p{3cm}|p{4cm}|}
+    %\hline
+    %\rowcolor{gray!30} % Gray background color for the header row
+    %\textbf{Version} & \textbf{Description} & \textbf{Date} & \textbf{Author} \\
+    %\hline
+    %1 & Entwurf & 04.08.2021 & Usam \\
+    %\hline
+    %\end{longtable}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\input{introduction.tex}
+%\input{backtesting.tex}
+%\input{deployment.tex}
+% ... other sections ...
+
+\chapter{Conclusions}
+    Your conclusion content...
+    
+ 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\bibliographystyle{unsrt}
+\bibliography{references.bib}
+
+\end{document}

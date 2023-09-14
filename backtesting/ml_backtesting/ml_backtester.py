@@ -1,21 +1,13 @@
-from sklearn import linear_model
-import pandas as pd 
+import pandas as pd
 import numpy as np
 
-from sklearn.model_selection import train_test_split, KFold, cross_val_score, GridSearchCV
-
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
-from sklearn.metrics import precision_score
-from sklearn.metrics import recall_score
-from sklearn.metrics import f1_score
-from itertools import product
-from ml_data_plot import MlDataPlotter
-from ml_data_manager import MlDataManager
+from utilities.plot_utils.ml_data_plot import MlDataPlotter
+from utilities.data_utils.ml_data_manager import MlDataManager
 from ml_model_trainer import MlModelTrainer
 
 from itertools import product
 
-import ta
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -54,7 +46,7 @@ class MlVectorBacktester:
         plots the performance of the strategy compared to the symbol
     '''
 
-    def __init__(self, symbol, amount=1, tc=0.0007):
+    def __init__(self, config):
         
         self.symbol = symbol
  
@@ -78,44 +70,46 @@ class MlVectorBacktester:
         # store used cryptocurrency ticker
         self.model_perf_data["symbol"] = self.symbol
 
-    def upsample(self):
-        '''  Upsamples/copies trading positions back to higher frequency.
-        '''
-
-        data = self.data.copy()
-        resamp = self.results.copy()
-
-        data["position"] = resamp.position.shift()
-        data = data.loc[resamp.index[0]:].copy()
-        data.position = data.position.shift(-1).ffill()
-        data.dropna(inplace=True)
-        self.results = data
-
     def run_strategy(self):
-        ''' Backtests the trading strategy.
-        '''
-        self.data_manager.X_val['strategy'] = pd.Series(self.data_manager.y_pred).shift() * self.data_manager.X_val['returns']
-        # determine when a trade takes place
-        self.data_manager.X_val["trades"] = pd.Series(self.data_manager.y_pred).diff().fillna(0).abs()
-        self.data_manager.X_val["trades"].fillna(0, inplace=True)
-        # subtract transaction costs from return when trade takes place
-        #print(f"3: {self.data_manager.X_val.isnull().values.any()}")
+        '''Backtests the trading strategy.'''
 
-        self.data_manager.X_val.strategy = self.data_manager.X_val.strategy - self.data_manager.X_val["trades"] * self.tc
-        # self.data_manager.X_val.strategy = self.data_manager.X_val.strategy - self.tc
-        # print(f"4: {self.data_manager.X_val.isnull().values.any()}")
-        # self.data_manager.X_val['strategy'] = self.data_manager.X_val['strategy'] - self.tc
-        self.data_manager.X_val['creturns'] = self.data_manager.X_val['returns'].cumsum().apply(np.exp)
-        self.data_manager.X_val['cstrategy'] = self.data_manager.X_val['strategy'].cumsum().apply(np.exp)
+        X_val = self.data_manager.X_val
+        y_pred_series = pd.Series(self.data_manager.y_pred)
 
-        # self.results = self.X_val
-        # absolute performance of the strategy
-        aperf = self.data_manager.X_val['cstrategy'].iloc[-1]
-        # out-/underperformance of strategy
-        operf = aperf - self.data_manager.X_val['creturns'].iloc[-1]
-        # number of trades
-        num_trades = self.data_manager.X_val['trades'].sum()
+        # Calculate strategy values
+        X_val['strategy'] = self._calculate_strategy_values(X_val, y_pred_series)
+
+        # Calculate trades and adjust for transaction costs
+        X_val['trades'] = self._calculate_trades(y_pred_series)
+        self._adjust_for_transaction_costs(X_val)
+
+        # Compute cumulative returns for base and strategy
+        X_val['creturns'] = X_val['returns'].cumsum().apply(np.exp)
+        X_val['cstrategy'] = X_val['strategy'].cumsum().apply(np.exp)
+
+        # Compute performance metrics
+        aperf, operf, num_trades = self._compute_performance_metrics(X_val)
+
         return round(aperf, 2), round(operf, 2), num_trades
+
+    def _calculate_strategy_values(self, X_val, y_pred_series):
+        '''Calculate strategy values.'''
+        return y_pred_series.shift() * X_val['returns']
+
+    def _calculate_trades(self, y_pred_series):
+        '''Determine when a trade takes place.'''
+        return y_pred_series.diff().fillna(0).abs()
+
+    def _adjust_for_transaction_costs(self, X_val):
+        '''Subtract transaction costs from strategy when a trade takes place.'''
+        X_val['strategy_net'] -= X_val["trades"] * self.tc
+
+    def _compute_performance_metrics(self, X_val):
+        '''Compute performance metrics for the strategy.'''
+        aperf = X_val['cstrategy'].iloc[-1]
+        operf = aperf - X_val['creturns'].iloc[-1]
+        num_trades = X_val['trades'].sum()
+        return aperf, operf, num_trades
 
     def classification_report(self):
         # estimate accuracy on validation set

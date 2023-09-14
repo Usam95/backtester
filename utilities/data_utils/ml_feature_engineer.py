@@ -2,38 +2,34 @@
 import os
 import sys
 import numpy as np
-
+import pandas as pd
 sys.path.append(os.path.abspath(".."))
-from data_loader import load_data
-from logger import Logger
+from .data_loader import load_data
+from ..logger import Logger
 
 logger = Logger().get_logger()
 
 
 class FeatureEngineer:
-    def __init__(self, data):
+    def __init__(self, data: pd.DataFrame, periods: list):
         """Initialize the FeatureEngineer with a dataset."""
-        self.data = data.copy().astype(float)
-        self._validate_data()
-
-    def _validate_data(self):
-        """Validate the input data for necessary columns."""
-        required_columns = ['Close', 'Volume', 'High', 'Low']
-
-        missing_columns = [col for col in required_columns if col not in self.data.columns]
-
-        if missing_columns:
-            raise ValueError(f"Input data is missing the following columns: {', '.join(missing_columns)}")
+        self.data = data
+        self.periods = periods
 
     def add_features(self):
         """Add various technical indicators to the dataset."""
-        for n in [10, 30, 200]:
+        for n in self.periods:
             self._add_ma(n)
             self._add_ema(n)
             self._add_rsi(n)
             self._add_sto(n)
             self._add_mom(n)
             self._add_roc(n)
+            self._add_stos(n)
+            self._add_stomom(n)
+            self._add_storoc(n)
+            self._add_stoch_rsi(n)
+            self._add_sto_cross(n)
         self._add_obv()
         self._add_returns()
         self._add_rolling_cum_returns()
@@ -41,7 +37,7 @@ class FeatureEngineer:
         self._add_day_of_week()
         self._calculate_range()
 
-        return self.data.copy()
+        return self.data
 
     def _add_returns(self):
         """Calculate and add the log returns to the dataset."""
@@ -86,6 +82,39 @@ class FeatureEngineer:
         self.data[stock_str] = ((self.data["Close"] - self.data["Low"].rolling(n).min()) /
                                (self.data["High"].rolling(n).max() - self.data["Low"].rolling(n).min())) * 100
         self.data[stod_str] = self.data[stock_str].rolling(3).mean()
+
+    def _add_stos(self, n):
+        """Add Slow Stochastic Oscillator."""
+        stock_str = f'STOCK_{n}'
+        self.data[f'STOS_{n}'] = self.data[stock_str].rolling(3).mean()
+
+    def _add_stomom(self, n):
+        """Add Stochastic Oscillator Momentum."""
+        stock_str = f'STOCK_{n}'
+        self.data[f'STOMOM_{n}'] = self.data[stock_str] - self.data[stock_str].shift(n)
+
+    def _add_storoc(self, n):
+        """Add Stochastic Oscillator Rate of Change."""
+        stock_str = f'STOCK_{n}'
+        self.data[f'STOROC_{n}'] = self.data[stock_str].pct_change(periods=n) * 100
+
+    def _add_stoch_rsi(self, n):
+        """Add Stochastic RSI."""
+        delta = self.data["Close"].diff()
+        gain = (delta.where(delta > 0, 0)).fillna(0)
+        loss = (-delta.where(delta < 0, 0)).fillna(0)
+        avg_gain = gain.rolling(n).mean()
+        avg_loss = loss.rolling(n).mean()
+        rs = avg_gain / avg_loss
+        rsi = 100 - (100 / (1 + rs))
+        self.data[f'StochRSI_{n}'] = ((rsi - rsi.rolling(n).min()) /
+                                      (rsi.rolling(n).max() - rsi.rolling(n).min())) * 100
+
+    def _add_sto_cross(self, n):
+        """Add Stochastic Oscillator Cross."""
+        stock_str = f'STOCK_{n}'
+        stod_str = f'STOD_{n}'
+        self.data[f'STOCROSS_{n}'] = np.where(self.data[stock_str] > self.data[stod_str], 1, -1)
 
     def add_target(self, config):
         strategy_target = config.target.strategy
@@ -177,6 +206,8 @@ class FeatureEngineer:
 
         else:
             raise ValueError(f"Target strategy '{strategy_target}' not recognized. Please provide the valid strategy.")
+
+        return self.data
 
     def _add_rolling_cum_returns(self):
         """Add rolling cumulative returns."""

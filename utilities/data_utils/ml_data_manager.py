@@ -130,12 +130,17 @@ class MlDataManager:
         print(f"Num of trades in testing set: {test_trades}")
         print("=" * 80)
 
-    def _split_data(self, test_size=0.2):
+    def extract_feature_columns(self):
+        excluded_columns = ['Signal'] #'Open', 'High', 'Low',
+        self.feature_columns = [col for col in self.data.columns if col not in excluded_columns]
+
+    def _split_data(self, config, test_size=0.2):
         """
         Split the dataset into train and test sets.
 
         Args:
-        - test_size (float): Proportion of the dataset to include in the test set.
+        - config (dict): Configuration settings including split_date.
+        - test_size (float): Proportion of the dataset to include in the test set if no split_date is provided.
 
         Sets:
         - self.X_train (pd.DataFrame): Training data without target variable.
@@ -147,14 +152,19 @@ class MlDataManager:
         # Extract the target variable 'Signal' for both training and testing datasets
         y = self.data['Signal']
 
-        # Split the data
-        X_train, X_test, y_train, y_test = train_test_split(self.data, y, test_size=test_size, shuffle=False)
+        split_date = config["dataset_conf"]["split_date"]
+
+        if split_date != "":  # If split_date is provided in the config
+            mask = self.data.index <= split_date
+            X_train, X_test = self.data[mask], self.data[~mask]
+            y_train, y_test = y[mask], y[~mask]
+        else:  # If no split_date is provided, use the test_size to split the data
+            X_train, X_test, y_train, y_test = train_test_split(self.data, y, test_size=test_size, shuffle=False)
 
         # Drop the 'Signal' column from the training and testing data
         X_train = X_train.drop(columns=['Signal'])
         X_test = X_test.drop(columns=['Signal'])
 
-        # Assign to class variables
         self.X_train = X_train
         self.X_test = X_test
         self.y_train = y_train
@@ -163,14 +173,14 @@ class MlDataManager:
     def preprocess_data(self):
         self.resample_data()
         self.feature_engineer = FeatureEngineer(self.data, self.periods)
-        if self.config.mode == "training":
-            self.data = self.feature_engineer.add_features()
-            self.data = self.feature_engineer.add_target(self.config)
-            self._clean_data()
-            self._split_data()
-            self.transform_data()
-            self.print_data_info()
-            self.perform_svd()
+        self.data = self.feature_engineer.add_features()
+        self.data = self.feature_engineer.add_target(self.config)
+        self.extract_feature_columns()
+        self._clean_data()
+        self._split_data()
+        self.transform_data()
+        self.print_data_info()
+        self.perform_svd()
 
     def _convert_to_floats(self):
         self.X_train = self.X_train.astype(float)

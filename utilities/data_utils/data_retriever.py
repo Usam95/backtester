@@ -5,11 +5,11 @@ import pickle
 import sys
 import time
 import datetime
-#from datetime import datetime, timedelta
 from credentials import *
 from logger import Logger
 from binance.client import Client
 
+from data_loader import load_data, get_path
 
 class DataRetriever:
 
@@ -22,12 +22,6 @@ class DataRetriever:
     ============
     folder: str
         directory where the downloaded data are stored
-
-    #start: str
-        start date for data import
-    #end: str
-        end date for data import
-
 
     Methods
     =======
@@ -61,6 +55,8 @@ class DataRetriever:
         self.hist_data_folder = folder
         self.logger = self.logger = Logger().get_logger()
         self.client = None
+        self.symbol_df = None
+        self.symbols = None
 
     def connect(self): 
         self.client = Client(api_key = testnet_api_key, api_secret = testnet_secret_key, tld = "com", testnet=True)
@@ -72,18 +68,18 @@ class DataRetriever:
             exit(1)
             
     def get_all_tickers(self): 
-        self.tickers = self.client.get_all_tickers()
-        self.tickers_df = pd.DataFrame(self.tickers)
-        self.tickers_df.reset_index(inplace=True, drop=True)   
-        self.tickers = self.tickers_df.symbol.to_list()
+        self.symbols = self.client.get_all_tickers()
+        self.symbol_df = pd.DataFrame(self.symbols)
+        self.symbol_df.reset_index(inplace=True, drop=True)
+        self.symbols = self.symbol_df.symbol.to_list()
     
     def get_only_tickers_containing_symbol(self, symbol="USDT"):
-        self.tickers = self.client.get_all_tickers()                 
-        self.tickers_df = pd.DataFrame(self.tickers)
-        self.tickers_df = self.tickers_df[self.tickers_df.symbol.str.contains(symbol)]
-        self.tickers_df.reset_index(inplace=True, drop=True)   
+        self.symbols = self.client.get_all_tickers()
+        self.symbol_df = pd.DataFrame(self.symbols)
+        self.symbol_df = self.symbol_df[self.symbol_df.symbol.str.contains(symbol)]
+        self.symbol_df.reset_index(inplace=True, drop=True)
         
-        self.tickers = self.tickers_df.symbol.to_list()
+        self.symbols = self.symbol_df.symbol.to_list()
        
     def create_ticker_folder(self, ticker):
         path = os.path.join(self.folder, ticker)
@@ -94,16 +90,16 @@ class DataRetriever:
                                            
     def load_tickers(self, filename="symbols.txt"):
         with open(filename, "rb") as fp:   # Unpickling
-            self.tickers = pickle.load(fp)
+            self.symbols = pickle.load(fp)
 
     def remove_ticker_and_store_list(self, ticker, filename="symbols.txt"): 
         try: 
-            self.tickers.remove(ticker)
+            self.symbols.remove(ticker)
         except ValueError: 
             self.logger.error(f"{ticker} is not is the list of defined symbols.")
 
         with open("symbols.txt", "wb") as fp:   # Pickling
-            pickle.dump(self.tickers, fp)
+            pickle.dump(self.symbols, fp)
             self.logger.into(f"Stored the list of symbols to be updated in the file {filename}.")
 
     def get_ticker_historical_data(self, ticker, interval, start_t=None):
@@ -152,35 +148,6 @@ class DataRetriever:
         self.logger.error(f"Max attempts for reconnections achieved.. Exiting..")
         exit(1)
 
-    def get_path(self, ticker):
-        symbol_folder = os.path.join(self.hist_data_folder, ticker)
-
-        # Check if the directory exists
-        if not os.path.exists(symbol_folder):
-            self.logger.error(f"ERROR: Folder for {ticker} does not exist.")
-            raise FileNotFoundError(f"Folder for {ticker} does not exist.")
-
-        # Directly check for the file's existence rather than listing all files
-        if os.path.isfile(os.path.join(symbol_folder, f"{ticker}.parquet.gzip")):
-            return os.path.join(symbol_folder, f"{ticker}.parquet.gzip")
-        elif os.path.isfile(os.path.join(symbol_folder, f"{ticker}.csv")):
-            return os.path.join(symbol_folder, f"{ticker}.csv")
-        else:
-            self.logger.error(f"ERROR: Could not find any data for {ticker}..")
-            raise FileNotFoundError(f"Could not find any data for {ticker}..")
-
-    def load_data(self, ticker):
-        data_path = self.get_path(ticker)
-
-        _, file_extension = os.path.splitext(data_path)
-        if file_extension == ".gzip":
-            return pd.read_parquet(data_path)
-        elif file_extension == ".csv":
-            return pd.read_csv(data_path, parse_dates=["Date"], index_col="Date")
-        else:
-            self.logger.error(f"ERROR: Unsupported file format: {file_extension} for ticker {ticker}")
-            raise ValueError(f"Unsupported file format: {file_extension} for ticker {ticker}")
-
     def store_df(self, df, path, parquet=True):
         try:
             if parquet:
@@ -206,7 +173,7 @@ class DataRetriever:
 
     def update_historical_data_for_symbol(self, symbol, interval="1m"):
         # Step 1: Read the existing data
-        df = self.load_data(symbol)
+        df = load_data(symbol)
 
         # Step 2: Identify the last date
         last_date = df.index[-1].date()
@@ -232,7 +199,7 @@ class DataRetriever:
             df = pd.concat([df, new_data])
 
             # Store the updated data
-            path = self.get_path(symbol)
+            path = get_path(symbol)
             self.store_df(df, path)
             self.logger.info(f"Data for {symbol} with granularity {interval} updated successfully.")
         else:
@@ -241,7 +208,7 @@ class DataRetriever:
     def retrieve_all_historical_data(self):
         total_start_t = time.time()
 
-        for ticker in tqdm.tqdm(self.tickers):
+        for ticker in tqdm.tqdm(self.symbols):
             try:
                 start_t = time.time()
 
@@ -270,5 +237,4 @@ if __name__ == "__main__":
 
     for symbol in symbols:
         dataRetriever.update_historical_data_for_symbol(symbol)
-    #dataRetriever.tickers = symbols
-    # dataRetriever.retrieve_all_historical_data()
+

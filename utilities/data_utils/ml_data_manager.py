@@ -23,10 +23,10 @@ pd.set_option('display.max_colwidth', None)   # Ensure each column is wide enoug
 
 
 class MlDataManager:
-    def __init__(self, config,  hist_data_folder="../../hist_data", training=True):
-        self.config = config
+    def __init__(self, dataset_conf,  hist_data_folder="../../hist_data", training=True):
+        self.dataset_conf = dataset_conf
         self.hist_data_folder = hist_data_folder
-        self.symbol = config.symbol
+        self.symbol = dataset_conf.symbol
         self.training = training
         self.data = None
         self.X_train = None
@@ -39,7 +39,7 @@ class MlDataManager:
         self.periods = [10, 30, 50, 70]
 
     def load_data(self):
-        self.data = load_data(self.symbol)
+        self.data = load_data(self.dataset_conf)
         self._validate_data()
 
     def set_data(self, data):
@@ -59,8 +59,8 @@ class MlDataManager:
             raise ValueError(f"Input data is missing the following columns: {', '.join(missing_columns)}")
 
     def resample_data(self):
-        volume = self.data["Volume"].resample(self.config.freq).sum().iloc[:-1]
-        self.data = self.data.loc[:, self.data.columns != "Volume"].resample(self.config.freq).last().iloc[:-1]
+        volume = self.data["Volume"].resample(self.dataset_conf.freq).sum().iloc[:-1]
+        self.data = self.data.loc[:, self.data.columns != "Volume"].resample(self.dataset_conf.freq).last().iloc[:-1]
         self.data["Volume"] = volume
 
     def transform_data(self):
@@ -131,10 +131,10 @@ class MlDataManager:
         print("=" * 80)
 
     def extract_feature_columns(self):
-        excluded_columns = ['Signal'] #'Open', 'High', 'Low',
+        excluded_columns = ['Signal', 'Open', 'High', 'Low']
         self.feature_columns = [col for col in self.data.columns if col not in excluded_columns]
 
-    def _split_data(self, config, test_size=0.2):
+    def _split_data(self, test_size=0.2):
         """
         Split the dataset into train and test sets.
 
@@ -152,7 +152,7 @@ class MlDataManager:
         # Extract the target variable 'Signal' for both training and testing datasets
         y = self.data['Signal']
 
-        split_date = config["dataset_conf"]["split_date"]
+        split_date = self.dataset_conf.split_date
 
         if split_date != "":  # If split_date is provided in the config
             mask = self.data.index <= split_date
@@ -174,7 +174,7 @@ class MlDataManager:
         self.resample_data()
         self.feature_engineer = FeatureEngineer(self.data, self.periods)
         self.data = self.feature_engineer.add_features()
-        self.data = self.feature_engineer.add_target(self.config)
+        self.data = self.feature_engineer.add_target(self.dataset_conf)
         self.extract_feature_columns()
         self._clean_data()
         self._split_data()

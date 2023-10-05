@@ -22,10 +22,10 @@ def get_path(ticker):
         raise FileNotFoundError(f"Could not find any data for {ticker}..")
 
 
-def load_data(config):
-    symbol = config["dataset_conf"]["symbol"]
-    start_date = config["dataset_conf"]["start_date"]
-    end_date = config["dataset_conf"]["end_date"]
+def load_data(dataset_conf):
+    symbol = dataset_conf.symbol
+    start_date = dataset_conf.start_date
+    end_date = dataset_conf.end_date
 
     data_path = get_path(symbol)
 
@@ -40,11 +40,11 @@ def load_data(config):
     # Adjusting start and end dates
     if start_date == "" or start_date not in data.index:
         start_date = data.index[0].strftime('%Y-%m-%d %H:%M:%S')
-        logger.info(f"Start date not provided or not in data. Using first available date: {start_date}")
+        print(f"Start date not provided or not in data. Using first available date: {start_date}")
 
     if end_date == "" or end_date not in data.index:
         end_date = data.index[-1].strftime('%Y-%m-%d %H:%M:%S')
-        logger.info(f"End date not provided or not in data. Using last available date: {end_date}")
+        print(f"End date not provided or not in data. Using last available date: {end_date}")
 
     data = data.loc[start_date:end_date]
 

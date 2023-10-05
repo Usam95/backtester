@@ -33,9 +33,12 @@ class Performance:
             print("WARNING: Data and symbol were not provided to constructor\n"
                   "Please use the function 'set_data'. to set data to be analysed.")
         else:
-            self.data = data
+            self.data = data.copy()
             self.to_analyze = self.data.strategy
-            self.returns = self.data.returns
+            if 'Returns' in self.data.columns:
+                self.returns = self.data.Returns
+            else:
+                self.returns = self.data.returns
             self.tp_year = 1    # default value for number of years
 
         self.performance_functions = {
@@ -57,7 +60,12 @@ class Performance:
 
     def set_data(self, data):
         self.data = data.copy()
-        self.returns = self.data.returns
+        if 'Returns' in self.data.columns:
+            self.returns = self.data.Returns
+        else:
+            self.returns = self.data.returns
+
+        print(data.head())
         self.tp_year = (self.data.Close.count() / ((self.data.index[-1] - self.data.index[0]).days / 365.25))
 
     def calculate_performance(self):

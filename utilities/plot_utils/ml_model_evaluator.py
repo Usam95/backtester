@@ -10,8 +10,8 @@ from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.ticker import ScalarFormatter, FormatStrFormatter
 
 # set seaborn style
-sns.set_style("whitegrid")
-sns.set_context("talk")  # this will make plot elements slightly larger
+#sns.set_style("whitegrid")
+#sns.set_context("talk")  # this will make plot elements slightly larger
 
 base_ml_data = [
     'symbol', 'model_name', 'acc_train', 'acc_val', 'precision',
@@ -19,8 +19,14 @@ base_ml_data = [
     'len_val',  'aperf', 'operf', 'num_trades'
 ]
 
-plt.rcParams["font.family"] = "serif"
+from pylab import mpl, plt
+plt.style.use('seaborn')
+mpl.rcParams['savefig.dpi'] = 300
+mpl.rcParams['font.family'] = 'serif'
 plt.rcParams["font.size"] = 12
+
+sns.set_style("whitegrid")
+sns.set_context("talk")
 
 
 class MlDataPlotter:
@@ -37,12 +43,13 @@ class MlDataPlotter:
     self.tc = tc
     """
 
-    def __init__(self, data_manager, model_name, output_path="pdfs"):
+    def __init__(self, data_manager, model_name, target, output_path="pdfs"):
         """
         Store performance data of a specific model test case.
 
         :param model_perf_data: Dictionary containing performance metrics of the model.
         """
+        self.target = target
         self.results_df = None
         self.model_name = model_name
         self.data_manager = data_manager
@@ -52,10 +59,10 @@ class MlDataPlotter:
 
     def _init_pdf(self):
         """Initialize a PDF at the given path with a filename based on the symbol."""
-        directory = os.path.join(self.output_path, f"{self.model_name}")
+        directory = os.path.join(self.output_path, f"{self.model_name}", f"{self.data_manager.symbol}")
         if not os.path.exists(directory):
             os.makedirs(directory)
-        file_path = os.path.join(self.output_path, f"{self.model_name}", "{self.data_manager.symbol}.pdf")
+        file_path = os.path.join(self.output_path, f"{self.model_name}", f"{self.data_manager.symbol}", f"{self.target}.pdf")
         pdf = PdfPages(file_path)
         return pdf
 
@@ -172,22 +179,25 @@ class MlDataPlotter:
 
         :param model: Trained machine learning model.
         """
-        self._set_plot_properties('Importance of individual features for model predicting.')
+        self._set_plot_properties('Relative Importance of Features in Predictive Model')
 
         importances_length = len(model.feature_importances_)
-        columns_length = len(self.data_manager.X_train.columns)
+        columns_length = len(self.data_manager.feature_columns)
+
+        color = sns.color_palette("pastel", n_colors=1)
 
         # Ensure feature_importances_ length matches columns length
         if importances_length != columns_length:
             raise ValueError("Mismatch between feature importances length and number of columns.")
 
         importance = pd.DataFrame({'Importance': model.feature_importances_ * 100},
-                                  index=self.data_manager.X_train.columns)
+                                  index=self.data_manager.feature_columns)
 
-        importance.sort_values('Importance', ascending=True).plot(kind='barh', color='r', legend=False)
+        importance.sort_values('Importance', ascending=True).plot(kind='barh', color=color, legend=False)
 
-        plt.xlabel('Importance', fontsize=12)
-        plt.ylabel('Features', fontsize=12)
+        plt.title("Contribution of Features to Model's Prediction", fontsize=9, y=1.01)
+        plt.xlabel('Importance [in %]', fontsize=8)
+        plt.ylabel('Features', fontsize=8)
 
         # Set tick label sizes
         plt.xticks(fontsize=4)
@@ -201,11 +211,12 @@ class MlDataPlotter:
         """Plot a histogram of the data."""
         original_settings = plt.rcParams.copy()
         plt.style.use('default')
-        self._set_plot_properties('Data Histogram', figsize=(30, 30))
+        self._set_plot_properties('Data Histogram', figsize=(8, 6))
         axarr = self.data_manager.data.hist(sharex=False, sharey=False, xlabelsize=3, ylabelsize=3)
 
         # Adjust the title size for each subplot
         for ax in axarr.flatten():
+            ax.ticklabel_format(useOffset=False, style='plain', axis='both')  # prevent scientific notation
             title = ax.get_title()
             ax.set_title(title, fontsize=3)  # you can change 10 to whatever size you prefer
             #ax.set_position([0.1, 0.1, 0.85, 0.85])  # [left, bottom, width, height]
@@ -216,16 +227,55 @@ class MlDataPlotter:
         plt.rcParams.update(original_settings)
 
     def plot_signal_distribution(self):
-        """Plot the distribution of signal values for training and validation datasets."""
-        for dataset, label in [(self.data_manager.y_train, 'training'), (self.data_manager.y_test, 'validation')]:
-            self._set_plot_properties(f'Signal values distribution of {label} dataset.')
-            dataset.to_frame('signal').groupby(['signal']).size().plot(kind='barh', color='red')
-            self._save_plot()
+        unique_signals = self.data_manager.y_train.unique()
+        bright_green, bright_blue = sns.color_palette("icefire", n_colors=2)
+
+        # Prepare figure and axes
+        fig, ax = plt.subplots(figsize=(10, 6))
+        sns.set_style("whitegrid")
+        sns.set_context("talk")
+
+        # Set plot properties explicitly
+        ax.set_title('The distribution of the target values', y=1.05)
+        ax.set_ylabel('Target')
+        ax.set_xlabel('Number of target values')
+
+        # Get the data
+        train_data = self.data_manager.y_train.value_counts().reindex(unique_signals, fill_value=0)
+        validation_data = self.data_manager.y_test.value_counts().reindex(unique_signals, fill_value=0)
+
+        # Plot the data
+        bar_width = 0.35
+        indices = range(len(unique_signals))
+
+        bars1 = ax.barh([i - bar_width / 2 for i in indices], train_data, height=bar_width, color=bright_green, label='Training')
+        bars2 = ax.barh([i + bar_width / 2 for i in indices], validation_data, height=bar_width, color=bright_blue, label='Validation')
+
+        ax.set_yticks(indices)
+        ax.set_yticklabels(unique_signals)
+        ax.legend()
+        # Annotate the bars with their values
+        for bar in bars1:
+            y = bar.get_y() + bar.get_height() / 2
+            x = bar.get_width()
+            ax.text(x, y, str(int(x)), va='center', ha='left', fontsize=9, color='black')
+
+        for bar in bars2:
+            y = bar.get_y() + bar.get_height() / 2
+            x = bar.get_width()
+            ax.text(x, y, str(int(x)), va='center', ha='left', fontsize=9, color='black')
+        self._save_plot()
 
     def plot_covariance_matrix(self):
         """Plot the covariance matrix of the data."""
         self._set_plot_properties('Correlation Matrix', figsize=(30, 30))
-        sns.heatmap(self.data_manager.data.corr(), vmax=1, square=True, annot=True, cmap='cubehelix')
+
+        # Set the title with increased font size and adjust the position
+        plt.title('Correlation Matrix', fontsize=20, y=1.02)
+
+        # Choose a different heatmap color palette. For instance, 'YlGnBu'
+        sns.heatmap(self.data_manager.data.corr(), vmax=1, square=True, annot=True, cmap='Greens')
+
         self._save_plot()
 
     def plot_tsne(self):
@@ -239,15 +289,68 @@ class MlDataPlotter:
                    height=8, aspect=1.5)
         self._save_plot()
 
-    def plot_confusion_matrix(self):
-        """Plot the confusion matrix comparing predicted and actual values."""
-        self._set_plot_properties('Confusion Matrix')
-        matrix = confusion_matrix(self.data_manager.y_test, self.data_manager.y_pred)
+    def plot_classification_report(self, train=False):
+        """Plot the confusion matrix and classification report metrics side by side."""
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5.85))
+
+        # Adjust space between plots
+        plt.subplots_adjust(hspace=0.5)  # adjust this value as needed
+
+        if train:
+            matrix = confusion_matrix(self.data_manager.y_train, self.data_manager.y_pred_train)
+        else:
+            matrix = confusion_matrix(self.data_manager.y_test, self.data_manager.y_pred_test)
+
+        # Create custom labels
+        labels = [["TN", "FP"], ["FN", "TP"]]
+        new_labels = [["{0}\n{1:d}".format(label, value) for label, value in zip(row_label, row_value)]
+                      for row_label, row_value in zip(labels, matrix)]
+
         df_cm = pd.DataFrame(matrix, columns=np.unique(self.data_manager.y_test),
                              index=np.unique(self.data_manager.y_test))
         df_cm.index.name, df_cm.columns.name = 'Actual', 'Predicted'
-        sns.heatmap(df_cm, cmap="Blues", annot=True, annot_kws={"size": 16})
+
+        # Plot the confusion matrix heatmap
+        sns.heatmap(df_cm, cmap="Blues", annot=new_labels, fmt='', annot_kws={"size": 16}, ax=ax1)
+        ax1.set_title('Confusion Matrix')
+
+        # Plot the performance metrics
+        self.plot_performance_metrics(matrix, ax2)
+
+        plt.tight_layout()
         self._save_plot()
+
+    def plot_performance_metrics(self, matrix, ax):
+        """Plot classification performance metrics as a bar plot."""
+        #bright_green, bright_blue = sns.color_palette("icefire", n_colors=2)
+
+        # Compute metrics
+        TN, FP, FN, TP = matrix.ravel()
+        accuracy = (TP + TN) / (TP + TN + FP + FN)
+        precision = TP / (TP + FP)
+        recall = TP / (TP + FN)
+        f1_score = 2 * (precision * recall) / (precision + recall)
+
+        metrics = [accuracy, precision, recall, f1_score]
+        labels = ['Accuracy', 'Precision', 'Recall', 'F1 Score']
+
+        # Colors from the icefire palette
+        colors = sns.color_palette("pastel", n_colors=4)
+
+        # Plot the vertical bar plot using the generated colors
+        bars = ax.bar(labels, metrics, color=[colors[0], colors[1], colors[2], colors[3]])
+        ax.set_ylim(0, 1)
+        ax.set_ylabel('Score')
+        #ax.set_xlabel('Model Performance')
+        ax.set_title('Performance Metrics')
+        #ax.xaxis.set_label_coords(0.5, -0.8)  # adjust as needed
+
+        # Adding data labels on top of the bars
+        for bar in bars:
+            yval = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width() / 2, yval + 0.02, round(yval, 2), ha='center', va='bottom',
+                    fontsize=12)
+
 
     def plot_model_evaluation(self):
         """
@@ -306,11 +409,56 @@ class MlDataPlotter:
     #     plt.xticks(list(range(1, len(names) + 1)), names)
     #     self._save_plot()
 
+    def _generate_title(self, symbol, strategy_name, perf_data, **strategy_params):
+        base_title = f"{symbol} | "
+        base_title += f"{strategy_name} : ("
+        param_titles = [f"{key} = {value}" for key, value in strategy_params.items()]
+        param_string = base_title + " , ".join(param_titles) + " )"
+
+        perf_titles = [f"{key} = {value}" for key, value in perf_data.items()]
+        perf_string = " , ".join(perf_titles)
+
+        return param_string + "\n" + perf_string
+
+    def plot_performance_to_axis(self, data_subset, perf_obj, config,
+                                 ax=None, **strategy_params):
+        # If no axis is provided, create a new figure and axis
+        if ax is None:
+            _, ax = plt.subplots(figsize=(12, 5.85))
+
+        # Get performance data from the perf_obj
+        perf_data = {
+            "Strategy Multiple": perf_obj.strategy_multiple,
+            "Buy/Hold Multiple": perf_obj.bh_multiple,
+            "Net Out-/Under Perf": perf_obj.outperf_net,
+            "Num Trades": perf_obj.num_of_trades
+        }
+
+        # Generate title using provided method
+        title = self._generate_title(config.dataset_conf.symbol, config.model_name, perf_data, **strategy_params)
+
+        # Plotting
+        data_subset[["creturns", "cstrategy_net"]].plot(ax=ax)
+        ax.set_xlabel('Date', fontsize=8)
+        ax.set_ylabel("Performance", fontsize=8)
+        ax.legend(["creturns", "cstrategy_net"], fontsize=6)
+        ax.figure.text(0.5, 1.07, title, ha='center', va='center', fontsize=6, transform=ax.transAxes,
+                       family='DejaVu Serif')
+        ax.tick_params(axis='x', labelsize=6)
+        ax.tick_params(axis='y', labelsize=6)
+
+        # If mode is "both", plot a vertical line to show where training data ends and test data begins
+        if config.dataset_conf.mode == "full" and config.dataset_conf.split_date:
+            ax.axvline(x=config.dataset_conf.split_date, color='red', linestyle='--')
+
+        # Save the plot into the PDF
+        self._save_plot()
+
     def plot_backtest(self):
         """Plot backtesting results comparing creturns and cstrategy."""
         if not self.data_manager.results:
             print('No results to plot yet. Run a strategy.')
             return
         title = f'{self.data_manager.symbol} | TC = {self.data_manager.tc:.4f}'
-        self.data_manager.results[['creturns', 'cstrategy']].plot(title=title, figsize=(10, 6))
+        self.data_manager.results[['creturns', 'cstrategy_net']].plot(title=title, figsize=(10, 6))
         self._save_plot()

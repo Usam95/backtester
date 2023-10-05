@@ -42,6 +42,9 @@ class FeatureEngineer:
     def _add_returns(self):
         """Calculate and add the log returns to the dataset."""
         self.data["Returns"] = np.log(self.data.Close / self.data.Close.shift())
+        cum_returns = np.exp(self.data["Returns"].cumsum())
+        print(f"Id add_returns..")
+        print(cum_returns.tail())
 
     def _add_ma(self, n):
         """Add moving average over a window of n periods."""
@@ -117,7 +120,7 @@ class FeatureEngineer:
         self.data[f'STOCROSS_{n}'] = np.where(self.data[stock_str] > self.data[stod_str], 1, -1)
 
     def add_target(self, config):
-        strategy_target = config.target.strategy
+        strategy_target = config.target_conf.target
         """
         Calculate a target variable based on a given strategy.
 
@@ -150,8 +153,7 @@ class FeatureEngineer:
             If the momentum is positive and rising, it's an "up" (label=1). 
             If negative and falling, it's "down" (label=0)
             """
-            self.data['Signal'] = np.where(
-                (self.data['Momentum_10'] > 0) & (self.data['Momentum_10'].shift(-1) > self.data['Momentum_10']), 1, 0)
+            self.data['Signal'] = np.where((self.data['Momentum_10'] > 0) & (self.data['Momentum_10'].shift(-1) > self.data['Momentum_10']), 1, 0)
 
         elif strategy_target == 'ROC':
             """
@@ -178,7 +180,7 @@ class FeatureEngineer:
             """
             Predict if the returns of the next period are positive.
             """
-            N = config.target.N or 10
+            N = config.target_conf.N or 10
             self.data['Signal'] = np.where(self.data['Returns'].shift(-1) > self.data['Returns'].rolling(N).mean(), 1, 0)
 
         elif strategy_target == 'Volatility_Breakout':
@@ -186,23 +188,24 @@ class FeatureEngineer:
             Predict if the absolute returns (as a measure of volatility) of the next period will exceed the average absolute returns of the past N periods.
             This can be an indication of a breakout or a major market event.
             """
-            N = config.target.N or 10
+            N = config.target_conf.N or 10
             self.data['Signal'] = np.where(abs(self.data['Returns'].shift(-1)) > abs(self.data['Returns'].rolling(N).mean()), 1, 0)
 
         elif strategy_target == 'Exceed_Threshold':
             """
             Set a threshold (e.g., 1% or 0.01 as a fraction) and predict if the returns for the next period will exceed this threshold.
             """
-            threshold = config.target.threshold or 0.01
+            threshold = config.target_conf.threshold or 0.01
             self.data['Signal'] = np.where(self.data['Returns'].shift(-1) > threshold, 1, 0)
 
         elif strategy_target == 'Consecutive_Increases':
             """
             Predict if the next period's returns will mark the third consecutive increase in returns. This can capture trending behavior.
             """
-            self.data['Signal'] = np.where(
-                (self.data['Returns'] > 0) & (self.data['Returns'].shift(1) > 0)
-                & (self.data['Returns'].shift(2) > 0) & ( self.data['Returns'].shift(3) < 0), 1, 0)
+            self.data['Signal'] = np.where((self.data['Returns'] > 0)
+                                            & (self.data['Returns'].shift(1) > 0)
+                                            & (self.data['Returns'].shift(2) > 0)
+                                            & (self.data['Returns'].shift(3) < 0), 1, 0)
 
         else:
             raise ValueError(f"Target strategy '{strategy_target}' not recognized. Please provide the valid strategy.")

@@ -23,9 +23,9 @@ from pylab import mpl, plt
 plt.style.use('seaborn')
 mpl.rcParams['savefig.dpi'] = 300
 mpl.rcParams['font.family'] = 'serif'
-plt.rcParams["font.size"] = 12
+plt.rcParams["font.size"] = 8
 
-sns.set_style("whitegrid")
+#sns.set_style("whitegrid")
 sns.set_context("talk")
 
 
@@ -74,6 +74,7 @@ class MlDataPlotter:
         self.results_df = pd.DataFrame(columns=base_ml_data)
 
     def _save_plot(self):
+
         """Save the current plot to the PDF."""
         self.pdf.savefig(plt.gcf())
         plt.close()
@@ -147,13 +148,13 @@ class MlDataPlotter:
         ncomps = self.data_manager.svd.n_components
 
         # Set plot properties using the utility method you have
-        self._set_plot_properties('Explained Variance by Components')
-
+        #self._set_plot_properties(figsize=(8, 6))
+        plt.figure(figsize=(8, 4))
         plt.plot(range(ncomps), self.data_manager.svd.explained_variance_ratio_.cumsum(), marker='o', linestyle='--')
 
         # Set label sizes
-        plt.xlabel('Number of Components', fontsize=12)
-        plt.ylabel('Cumulative Explained Variance', fontsize=12)
+        plt.xlabel('Number of Components', fontsize=10)
+        plt.ylabel('Cumulative Explained Variance', fontsize=10)
 
         # Set tick label sizes
         plt.xticks(fontsize=8)
@@ -179,7 +180,7 @@ class MlDataPlotter:
 
         :param model: Trained machine learning model.
         """
-        self._set_plot_properties('Relative Importance of Features in Predictive Model')
+        #self._set_plot_properties('Relative Importance of Features in Predictive Model')
 
         importances_length = len(model.feature_importances_)
         columns_length = len(self.data_manager.feature_columns)
@@ -195,7 +196,7 @@ class MlDataPlotter:
 
         importance.sort_values('Importance', ascending=True).plot(kind='barh', color=color, legend=False)
 
-        plt.title("Contribution of Features to Model's Prediction", fontsize=9, y=1.01)
+        #plt.title("Contribution of Features to Model's Prediction", fontsize=8, y=1.01)
         plt.xlabel('Importance [in %]', fontsize=8)
         plt.ylabel('Features', fontsize=8)
 
@@ -228,17 +229,14 @@ class MlDataPlotter:
 
     def plot_signal_distribution(self):
         unique_signals = self.data_manager.y_train.unique()
-        bright_green, bright_blue = sns.color_palette("icefire", n_colors=2)
+        bright_green, bright_blue = sns.color_palette("pastel", n_colors=2)
 
-        # Prepare figure and axes
-        fig, ax = plt.subplots(figsize=(10, 6))
-        sns.set_style("whitegrid")
-        sns.set_context("talk")
+        # Set figure size
+        plt.figure(figsize=(8, 4))
 
-        # Set plot properties explicitly
-        ax.set_title('The distribution of the target values', y=1.05)
-        ax.set_ylabel('Target')
-        ax.set_xlabel('Number of target values')
+        # Set plot properties
+        plt.ylabel('Target', fontsize=8)
+        plt.xlabel('Number of target values', fontsize=8)
 
         # Get the data
         train_data = self.data_manager.y_train.value_counts().reindex(unique_signals, fill_value=0)
@@ -248,22 +246,29 @@ class MlDataPlotter:
         bar_width = 0.35
         indices = range(len(unique_signals))
 
-        bars1 = ax.barh([i - bar_width / 2 for i in indices], train_data, height=bar_width, color=bright_green, label='Training')
-        bars2 = ax.barh([i + bar_width / 2 for i in indices], validation_data, height=bar_width, color=bright_blue, label='Validation')
+        bars1 = plt.barh([i - bar_width / 2 for i in indices], train_data, height=bar_width, color=bright_green,
+                         label='Training')
+        bars2 = plt.barh([i + bar_width / 2 for i in indices], validation_data, height=bar_width, color=bright_blue,
+                         label='Validation')
 
-        ax.set_yticks(indices)
-        ax.set_yticklabels(unique_signals)
-        ax.legend()
+        plt.yticks(indices, unique_signals, fontsize=8)
+        plt.xticks(fontsize=8)
+        plt.legend(fontsize=8)
+
         # Annotate the bars with their values
         for bar in bars1:
             y = bar.get_y() + bar.get_height() / 2
             x = bar.get_width()
-            ax.text(x, y, str(int(x)), va='center', ha='left', fontsize=9, color='black')
+            plt.text(x, y, str(int(x)), va='center', ha='left', fontsize=8, color='black')
 
         for bar in bars2:
             y = bar.get_y() + bar.get_height() / 2
             x = bar.get_width()
-            ax.text(x, y, str(int(x)), va='center', ha='left', fontsize=9, color='black')
+            plt.text(x, y, str(int(x)), va='center', ha='left', fontsize=8, color='black')
+
+        # Adjust the subplot parameters to remove white space
+        plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.2)
+
         self._save_plot()
 
     def plot_covariance_matrix(self):
@@ -410,47 +415,57 @@ class MlDataPlotter:
     #     self._save_plot()
 
     def _generate_title(self, symbol, strategy_name, perf_data, **strategy_params):
-        base_title = f"{symbol} | "
-        base_title += f"{strategy_name} : ("
-        param_titles = [f"{key} = {value}" for key, value in strategy_params.items()]
-        param_string = base_title + " , ".join(param_titles) + " )"
+        # Center align model name
+        base_title = f"{symbol} | {strategy_name}".center(80)  # assuming you want to center it over an 80-char width
 
-        perf_titles = [f"{key} = {value}" for key, value in perf_data.items()]
-        perf_string = " , ".join(perf_titles)
+        # Convert strategy_params into titles, filtering out ones with value of None
+        param_titles = [f"{key} = {value}" for key, value in strategy_params.items() if value is not None]
 
-        return param_string + "\n" + perf_string
+        # Group parameters into chunks of 4
+        param_chunks = [param_titles[i:i + 6] for i in range(0, len(param_titles), 6)]
+        param_lines = [" , ".join(chunk) for chunk in param_chunks]
 
-    def plot_performance_to_axis(self, data_subset, perf_obj, config,
-                                 ax=None, **strategy_params):
-        # If no axis is provided, create a new figure and axis
-        if ax is None:
-            _, ax = plt.subplots(figsize=(12, 5.85))
+        # Convert perf_data into titles, again filtering out None values
+        perf_titles = [f"{key} = {value}" for key, value in perf_data.items() if value is not None]
+
+        # Construct the final title string
+        title = base_title  # Centered model name
+        title += "\n\nModel Parameters:\n"  # Model Parameters title
+        for line in param_lines:
+            title += '\t' + line + "\n" # Adding parameters 4 per line
+        # Add performance data
+        title += "\nPerformance:\n\t[" + " , ".join(perf_titles) + "]"
+
+        return title
+
+    def plot_performance_to_axis(self, data_subset, perf_obj, config, **strategy_params):
+        # Create a new figure and axis
+        plt.figure(figsize=(6, 4))
 
         # Get performance data from the perf_obj
         perf_data = {
-            "Strategy Multiple": perf_obj.strategy_multiple,
+            "Strategy Multiple": perf_obj.strategy_multiple_net,
             "Buy/Hold Multiple": perf_obj.bh_multiple,
             "Net Out-/Under Perf": perf_obj.outperf_net,
             "Num Trades": perf_obj.num_of_trades
         }
 
-        # Generate title using provided method
-        title = self._generate_title(config.dataset_conf.symbol, config.model_name, perf_data, **strategy_params)
-
         # Plotting
-        data_subset[["creturns", "cstrategy_net"]].plot(ax=ax)
-        ax.set_xlabel('Date', fontsize=8)
-        ax.set_ylabel("Performance", fontsize=8)
-        ax.legend(["creturns", "cstrategy_net"], fontsize=6)
-        ax.figure.text(0.5, 1.07, title, ha='center', va='center', fontsize=6, transform=ax.transAxes,
-                       family='DejaVu Serif')
-        ax.tick_params(axis='x', labelsize=6)
-        ax.tick_params(axis='y', labelsize=6)
+        data_subset[["creturns", "cstrategy_net"]].plot()
+        title = self._generate_title(config.dataset_conf.symbol, config.model_name, perf_data, **strategy_params)
+        plt.title(title, fontsize=6, family='DejaVu Serif', loc="left")  # setting the title for the plot
+
+        plt.xlabel('Date', fontsize=8)
+        plt.ylabel("Performance", fontsize=8)
+        plt.legend(["creturns", "cstrategy_net"], fontsize=7, loc="upper right")
+        plt.tick_params(axis='x', labelsize=6)
+        plt.tick_params(axis='y', labelsize=6)
 
         # If mode is "both", plot a vertical line to show where training data ends and test data begins
         if config.dataset_conf.mode == "full" and config.dataset_conf.split_date:
-            ax.axvline(x=config.dataset_conf.split_date, color='red', linestyle='--')
-
+            plt.axvline(x=config.dataset_conf.split_date, color='red', linestyle='--', linewidth=0.5)
+        # Adjust margins
+        plt.subplots_adjust(top=0.81, bottom=0.1)
         # Save the plot into the PDF
         self._save_plot()
 

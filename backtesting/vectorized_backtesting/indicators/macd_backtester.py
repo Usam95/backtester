@@ -7,7 +7,7 @@ import pandas as pd
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-from utilities.data_plot import DataPlot
+from utilities.plot_utils.backtesting_plotter import DataPlot
 from utilities.performance import Performance
 from itertools import product
 from .backtester_base import VectorBacktesterBase

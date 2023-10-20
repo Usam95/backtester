@@ -14,7 +14,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
 
 from .backtester_base import VectorBacktesterBase
-from utilities.data_plot import DataPlot
+from utilities.plot_utils.backtesting_plotter import DataPlot
 from utilities.logger import Logger
 from utilities.performance import Performance
 

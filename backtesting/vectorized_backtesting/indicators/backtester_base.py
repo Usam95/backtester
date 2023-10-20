@@ -189,9 +189,6 @@ class VectorBacktesterBase:
         self.results = data
         self.add_sessions()
 
-        if report:
-            self.print_performance()
-
     def add_take_profit(self, tp_thresh, report=True):
         """
         Adds Take Profit to the Strategy.
@@ -218,9 +215,6 @@ class VectorBacktesterBase:
         self.results = data
         self.add_sessions()
 
-        if report:
-            self.print_performance()
-
     def define_sl_pos(self, group):
         if (group.session_compound <= self.sl_thresh).any():
             start = group[group.session_compound <= self.sl_thresh].index[0]
@@ -238,50 +232,3 @@ class VectorBacktesterBase:
             return group
         else:
             return group
-
-    def print_performance(self, perf_obj, **kwargs):
-        """ Calculates and prints various Performance Metrics.
-        """
-
-        data = self.results.copy()
-
-        to_analyze = data.strategy
-
-        strategy_multiple = round(perf_obj.calculate_multiple(to_analyze), 6)
-        bh_multiple = round(perf_obj.calculate_multiple(data.returns), 6)
-        outperf = round(strategy_multiple - bh_multiple, 6)
-        cagr = round(perf_obj.calculate_cagr(to_analyze), 6)
-        ann_mean = round(perf_obj.calculate_annualized_mean(to_analyze), 6)
-        ann_std = round(perf_obj.calculate_annualized_std(to_analyze), 6)
-        sharpe = round(perf_obj.calculate_sharpe(to_analyze), 6)
-        sortino = round(perf_obj.calculate_sortino(to_analyze), 6)
-        max_drawdown = round(perf_obj.calculate_max_drawdown(to_analyze), 6)
-        calmar = round(perf_obj.calculate_calmar(to_analyze), 6)
-        max_dd_duration = round(perf_obj.calculate_max_dd_duration(to_analyze), 6)
-        kelly_criterion = round(perf_obj.calculate_kelly_criterion(to_analyze), 6)
-
-        print(100 * "=")
-        print("SIMPLE CONTRARIAN STRATEGY | INSTRUMENT = {} | Freq= {} | EMA_S = {} | EMA_L".format(kwargs["ticker"],
-                                                                                             kwargs["freq"],
-                                                                                             kwargs["ema_s"],
-                                                                                             kwargs["ema_l"]))
-        print(100 * "-")
-        # print("\n")
-        print("PERFORMANCE MEASURES:")
-        print("\n")
-        print("Multiple (Strategy):         {}".format(strategy_multiple))
-        print("Multiple (Buy-and-Hold):     {}".format(bh_multiple))
-        print(38 * "-")
-        print("Out-/Underperformance:       {}".format(outperf))
-        print("\n")
-        print("CAGR:                        {}".format(cagr))
-        print("Annualized Mean:             {}".format(ann_mean))
-        print("Annualized Std:              {}".format(ann_std))
-        print("Sharpe Ratio:                {}".format(sharpe))
-        print("Sortino Ratio:               {}".format(sortino))
-        print("Maximum Drawdown:            {}".format(max_drawdown))
-        print("Calmar Ratio:                {}".format(calmar))
-        print("Max Drawdown Duration:       {} Days".format(max_dd_duration))
-        print("Kelly Criterion:             {}".format(kelly_criterion))
-
-        print(100 * "=")

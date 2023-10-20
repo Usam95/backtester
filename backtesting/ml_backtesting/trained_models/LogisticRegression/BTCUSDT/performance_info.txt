@@ -1,2 +1,0 @@
-Best Score: 0.6301
-Best Parameters: {'C': 0.1, 'penalty': 'l1', 'solver': 'liblinear'}

@@ -233,15 +233,15 @@ class BacktesterBase:
         self.strategy = strategy
 
     def buy_instrument(self):
-        self.strategy.execute()
+        self.strategy.get_signal()
         # Implementierung für den Kauf eines Instruments
 
     def sell_instrument(self):
-        self.strategy.execute()
+        self.strategy.get_signal()
         # Implementierung für den Verkauf eines Instruments
 
     def close_position(self):
-        self.strategy.execute()
+        self.strategy.get_signal()
         # Implementierung zum Schließen einer Position
 
 # Executor-Klasse für den Backtester

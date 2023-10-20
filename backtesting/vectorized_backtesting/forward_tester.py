@@ -9,17 +9,16 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.
 
 from config.forward_config import create_and_validate_config
 
-import time
 from utilities.logger import Logger
 
 logger = Logger().get_logger()
 
-from backtesting.indicators.ema_backtester import EMABacktester
-from backtesting.indicators.sma_backtester import SMABacktester
-from backtesting.indicators.macd_backtester import MACDBacktester
-from backtesting.indicators.rsi_backtester import RsiBacktester
-from backtesting.indicators.bb_backtester import BbBacktester
-from backtesting.indicators.so_backtester import SoBacktester
+from backtesting.vectorized_backtesting.indicators.ema_backtester import EMABacktester
+from backtesting.vectorized_backtesting.indicators.sma_backtester import SMABacktester
+from backtesting.vectorized_backtesting.indicators.macd_backtester import MACDBacktester
+from backtesting.vectorized_backtesting.indicators.rsi_backtester import RsiBacktester
+from backtesting.vectorized_backtesting.indicators.bb_backtester import BbBacktester
+from backtesting.vectorized_backtesting.indicators.so_backtester import SoBacktester
 
 from basis_tester import BasisTester
 
@@ -51,7 +50,7 @@ class ForwardTester(BasisTester):
         # report performance data of current strategy in the log file
         backtester.perf_obj.print_performance(strategy_name=strategy_name)
         # plot the testing results
-        self.plot_results(backtester.perf_obj, pdf, strategy_name, symbol, **strategy_params)
+        self.plot_results(backtester.perf_obj, pdf, strategy_name, symbol, plot_all=True, **strategy_params)
 
     def execute_tests(self):
         strategy_classes = {
@@ -78,11 +77,12 @@ class ForwardTester(BasisTester):
                 strategy_config_for_symbol_dict = strategy_config_for_symbol.dict()  # Convert to dictionary
 
                 for strategy_name, params in strategy_config_for_symbol_dict.items():
-                    strategy_class = strategy_classes.get(strategy_name)
-                    if not strategy_class:
-                        logger.warning(f"No strategy class found for strategy: {strategy_name}")
-                        continue
-                    self.perform_test(strategy_class, strategy_name, symbol, pdf, **params)
+                    if strategy_name in config.strategies:
+                        strategy_class = strategy_classes.get(strategy_name)
+                        if not strategy_class:
+                            logger.warning(f"No strategy class found for strategy: {strategy_name}")
+                            continue
+                        self.perform_test(strategy_class, strategy_name, symbol, pdf, **params)
 
 
 if __name__ == '__main__':

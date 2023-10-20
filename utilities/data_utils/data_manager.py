@@ -3,48 +3,7 @@ import os
 
 from ta.momentum import RSIIndicator
 
-class ParameterLoader:
-
-    def __init__(self, symbol=None):
-        self.hist_data_folder = "../results"
-        self.EMA_folder = "EMA"
-        self.BB_folder = "BB"
-        self.indicator_params = {}
-
-        if symbol is not None:
-            self.symbol = symbol
-
-    def set_symbol(self, symbol):
-        self.symbol = symbol
-
-    def get_ema_params(self):
-
-        df_path = os.path.join(self.hist_data_folder, self.symbol, self.EMA_folder, "backtest_test_res.csv")
-        df = pd.read_csv(df_path)
-        ema_s = df.nlargest(1, 'outperf').reset_index(drop=True).loc[0, "EMA_S"]
-        ema_l = df.nlargest(1, 'outperf').reset_index(drop=True).loc[0, "EMAL"]
-        freq = df.nlargest(1, 'outperf').reset_index(drop=True).loc[0, "freq"]
-        print(f"EMA best frequency: {freq}")
-        self.indicator_params["EMA"] = {"EMA_S":ema_s, "EMA_L":ema_l}
-
-    def get_bb_params(self):
-
-        df_path = os.path.join(self.hist_data_folder, self.symbol, self.BB_folder, "backtest_test_res.csv")
-        df = pd.read_csv(df_path)
-        sma = df.nlargest(1, 'outperf').reset_index(drop=True).loc[0, "SMA"]
-        dev = df.nlargest(1, 'outperf').reset_index(drop=True).loc[0, "Dev"]
-
-        freq = df.nlargest(1, 'outperf').reset_index(drop=True).loc[0, "freq"]
-        print(f"BB best frequency: {freq}")
-        self.indicator_params["BB"] = {"SMA":sma, "Dev":dev}
-
-
-    def load_indicator_params(self):
-        self.get_ema_params()
-        self.get_bb_params()
-
-
-class DataManager(ParameterLoader):
+class DataManager:
 
     def __init__(self, symbol):
 

@@ -1,2 +1,0 @@
-Best Score: 0.6236
-Best Parameters: {'algorithm': 'SAMME', 'learning_rate': 0.001, 'n_estimators': 10}

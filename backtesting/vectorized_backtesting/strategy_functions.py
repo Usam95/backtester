@@ -1,12 +1,11 @@
 import os
 import time
 
-from backtesting.indicators.ema_backtester import EMABacktester
-from backtesting.indicators.sma_backtester import SMABacktester
-from backtesting.indicators.macd_backtester import MACDBacktester
-from backtesting.indicators.rsi_backtester import RSIBacktester
-from backtesting.indicators.bb_backtester import BBBacktester
-from config import backward_config
+from backtesting.vectorized_backtesting.indicators.ema_backtester import EMABacktester
+from backtesting.vectorized_backtesting.indicators.sma_backtester import SMABacktester
+from backtesting.vectorized_backtesting.indicators.macd_backtester import MACDBacktester
+from backtesting.vectorized_backtesting.indicators.rsi_backtester import RSIBacktester
+from backtesting.vectorized_backtesting.indicators.bb_backtester import BBBacktester
 from sys import exit
 
 from utilities.logger import Logger

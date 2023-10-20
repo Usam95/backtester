@@ -27,9 +27,9 @@ class CombinedStrategy(Strategy):
 
     def execute(self, data):
         # Get the indicator values from each strategy
-        sma = self.strategies[0].execute(data)
-        ema = self.strategies[1].execute(data)
-        rsi = self.strategies[2].execute(data)
+        sma = self.strategies[0].get_signal(data)
+        ema = self.strategies[1].get_signal(data)
+        rsi = self.strategies[2].get_signal(data)
 
         # Generate the combined buy/sell signal
         if sma > ema and rsi < 30:

@@ -3,6 +3,7 @@ import datetime
 import os.path
 from pathlib import Path
 
+
 class Singleton(type):
     _instances = {}
 
@@ -11,10 +12,12 @@ class Singleton(type):
             cls._instances[cls] = super().__call__(*args, **kwargs)
         return cls._instances[cls]
 
+
 class FlushingFileHandler(logging.FileHandler):
     def emit(self, record):
         super().emit(record)
         self.flush()
+
 
 class Logger(metaclass=Singleton):
     def __init__(self):

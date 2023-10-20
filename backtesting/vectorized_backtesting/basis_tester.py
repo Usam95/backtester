@@ -6,7 +6,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.
 from utilities.logger import Logger
 
 logger = Logger().get_logger()
-
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 
 class BasisTester:
 
@@ -67,11 +68,7 @@ class BasisTester:
 
         return param_string + "\n" + perf_string
 
-    def plot_results(self, perf_obj, pdf, strategy_name, symbol, **strategy_params):
-        """ Plots the performance of the trading strategy and compares to "buy and hold". """
-        if perf_obj.data is None:
-            return
-
+    def plot_performance_to_axis(self, perf_obj, ax, strategy_name, symbol, **strategy_params):
         perf_data = {
             "Strategy Multiple": perf_obj.strategy_multiple,
             "Buy/Hold Multiple": perf_obj.bh_multiple,
@@ -81,22 +78,28 @@ class BasisTester:
 
         title = self.generate_title(symbol, strategy_name, perf_data, **strategy_params)
 
-        ax = perf_obj.data[["creturns", "cstrategy"]].plot(figsize=(12, 8))
-        ax.set_xlabel('Date', fontsize=10)
-        ax.set_ylabel("Performance")
-        fig = ax.get_figure()
-        fig.text(0.5, -0.15, title, ha='center', va='center', fontsize=8, transform=ax.transAxes)
+        perf_obj.data[["creturns", "cstrategy"]].plot(ax=ax)
+        ax.set_xlabel('Date', fontsize=8)
+        ax.set_ylabel("Performance", fontsize=8)
 
-        plt.tight_layout()
-        pdf.savefig(fig, bbox_inches='tight')
-        plt.close()
+        ax.legend(["creturns", "cstrategy"], fontsize=6)
+        # Adjust the title's font and placement to better fit LaTeX style
+        ax.figure.text(0.5, 1.07, title, ha='center', va='center', fontsize=6, transform=ax.transAxes, family='DejaVu Serif')
+        # Adjust the tick label size for both x and y axes
+        ax.tick_params(axis='x', labelsize=6)
+        ax.tick_params(axis='y', labelsize=6)
 
-        # Add the trading activity plot to the PDF
-        self.plot_trading_activity(perf_obj.data, pdf)
+    def plot_results(self, perf_obj, pdf, strategy_name, symbol, **strategy_params):
+        """ Plots the performance of the trading strategy and compares to "buy and hold". """
+        if perf_obj.data is None:
+            return
 
-    def plot_trading_activity(self, data_df, pdf):
-        plt.figure(figsize=(20, 12))
-        plt.plot(data_df.index, data_df["Close"])
+        self.combined_plot_to_pdf(perf_obj, pdf, strategy_name, symbol, **strategy_params)
+
+        #self.combined_plot_to_pdf(perf_obj.data, pdf)
+
+    def plot_trading_signals_to_axis(self, data_df, ax):
+        ax.plot(data_df.index, data_df["Close"])
 
         # Initialize previous signal variable
         prev_signal = None
@@ -104,19 +107,46 @@ class BasisTester:
         # Add arrows for buy (1) and sell (0) signals
         for i, (date, row) in enumerate(data_df.iterrows()):
             if row["trades"] == 1 and prev_signal != 1:
-                plt.plot(date, row["Close"], "^g", markersize=10)
+                ax.plot(date, row["Close"], "^g", markersize=4)
                 prev_signal = 1
             elif row["trades"] == 0 and prev_signal != 0:
-                plt.plot(date, row["Close"], "vr", markersize=10)
+                ax.plot(date, row["Close"], "vr", markersize=4)
                 prev_signal = 0
 
         # Add labels and legend
-        plt.xlabel("Date")
-        plt.ylabel("Close Prices")
-        plt.legend(["Close", "Buy", "Sell"])
+        ax.set_xlabel("Date", fontsize=8)
+        ax.set_ylabel("Close Prices", fontsize=8)
+        ax.legend(["Close", "Buy", "Sell"], fontsize=6)
 
-        # Save the plot to the PDF
+        # Adjust the tick label size for both x and y axes
+        ax.tick_params(axis='x', labelsize=6)
+        ax.tick_params(axis='y', labelsize=6)
+        ax.set_title("Trading Signals", fontsize=8)
+
+    def combined_plot_to_pdf(self, perf_obj, pdf, strategy_name, symbol, **strategy_params):
+        fig, axes = plt.subplots(nrows=3, ncols=1, figsize=(6,9))
+
+        # First plot (performance)
+        self.plot_performance_to_axis(perf_obj, axes[0], strategy_name, symbol, **strategy_params)
+
+        # Second plot (trading signals)
+        self.plot_trading_signals_to_axis(perf_obj.data, axes[1])
+
+        # Third plot (market position)
+        self.plot_market_position_to_axis(perf_obj.data, axes[2])
+
+        # Save the combined plot to the PDF
         plt.tight_layout()
-        pdf.savefig(bbox_inches='tight')
-        plt.close()
+        #pdf.savefig(fig, bbox_inches='tight')
+        pdf.savefig(fig, bbox_inches='tight')
+        plt.close(fig)
 
+    def plot_market_position_to_axis(self, data, ax):
+        data['position'].plot(ax=ax, ylim=[-0.1, 1.1])
+        ax.set_ylabel("Position", fontsize=8)
+        ax.set_xlabel("Date", fontsize=8)
+        # Adjust the tick label size for both x and y axes
+        ax.tick_params(axis='x', labelsize=6)
+        ax.tick_params(axis='y', labelsize=6)
+
+        ax.set_title("Market Positioning", fontsize=8)

@@ -24,6 +24,7 @@ class ForwardTester(BaseModel):
     All configuration relevant backtesting and optimizing.
     """
     strategies_config: Optional[StrategiesConfig]
+    strategies: list[str]
     symbols: list[str]
     metric: str
     hist_data_folder: str

@@ -4,8 +4,8 @@ from tqdm import tqdm
 import os
 import sys
 import pandas as pd
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..', '..', '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..', '..')))
 
 from utilities.plot_utils.backtesting_plotter import DataPlot
 from utilities.performance import Performance

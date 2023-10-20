@@ -8,12 +8,12 @@ from utilities.logger import Logger
 logger = Logger().get_logger()
 from config.backward_config import create_and_validate_config
 
-from backtesting.indicators.ema_backtester import EMABacktester
-from backtesting.indicators.sma_backtester import SMABacktester
-from backtesting.indicators.macd_backtester import MACDBacktester
-from backtesting.indicators.rsi_backtester import RsiBacktester
-from backtesting.indicators.bb_backtester import BbBacktester
-from backtesting.indicators.so_backtester import SoBacktester
+from backtesting.vectorized_backtesting.indicators.ema_backtester import EMABacktester
+from backtesting.vectorized_backtesting.indicators.sma_backtester import SMABacktester
+from backtesting.vectorized_backtesting.indicators.macd_backtester import MACDBacktester
+from backtesting.vectorized_backtesting.indicators.rsi_backtester import RsiBacktester
+from backtesting.vectorized_backtesting.indicators.bb_backtester import BbBacktester
+from backtesting.vectorized_backtesting.indicators.so_backtester import SoBacktester
 
 from basis_tester import BasisTester
 

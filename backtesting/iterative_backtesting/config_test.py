@@ -87,7 +87,7 @@ class StrategyExecutor:
                     end_row = i + 1
 
                     # Compute the signal for the strategy
-                    signal = strategy_instance.execute(self.data.iloc[start_row:end_row])
+                    signal = strategy_instance.get_signal(self.data.iloc[start_row:end_row])
                     if signal == "Buy":
                         sell_signals[j] = ""
                     elif signal == "Sell":

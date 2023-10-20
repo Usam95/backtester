@@ -1,5 +1,8 @@
 {
     "strategies": [
+        "ema"
+    ],
+    "strategies_": [
         "macd",
         "ema",
         "sma",
@@ -7,21 +10,29 @@
         "rsi",
         "bb"
     ],
-    "_comment": "accepted perf measurement metrics: outperf_net,  calmar, sharpe, sortino",
-    "metric": "outperf_net",
-    "symbols": [
+    "symbols_": [
         "XRPUSDT",
         "LTCUSDT",
         "TRXUSDT",
         "ETHUSDT",
         "BTCUSDT"
     ],
-    "hist_data_folder": "../../hist_data",
+    "_comment": "accepted perf measurement metrics: outperf_net,  calmar, sharpe, sortino",
+    "metric": "outperf_net",
+    "symbols": [
+        "LTCUSDT"
+    ],
+    "hist_data_folder": "../../historical_data",
     "output_folder": "results/forward",
-    "time_frame": {
-        "start_date": "2023-01-01 00:00:00",
+    "time_frame_": {
+        "start_date": "2021-01-01 00:00:00",
         "end_date": "",
-        "split_data": "2022-12-31 23:59:00"
+        "split_data": "2021-12-31 23:59:00"
+    },
+    "time_frame": {
+        "start_date": "2021-01 00:00:00",
+        "end_date": "2021-12-31 23:59:00",
+        "split_data": ""
     },
     "ptc": 0.00075,
     "strategies_config": {
@@ -173,10 +184,10 @@
                 "ema_l_val": 200
             },
             "macd": {
-                "freq": 110,
-                "ema_s_val": 46,
-                "ema_l_val": 190,
-                "signal_mw": 45
+                "freq": 1440,
+                "ema_s_val": 12,
+                "ema_l_val": 26,
+                "signal_mw": 9
             },
             "rsi": {
                 "freq": 35,

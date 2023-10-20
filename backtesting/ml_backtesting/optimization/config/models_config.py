@@ -7,5 +7,5 @@ class ModelConfig(BaseModel):
     params: Dict[str, Union[float, List[Union[float, str, int]]]]
 
 
-class AllModelsConfig(BaseModel):
+class ModelsConfig(BaseModel):
     models: List[ModelConfig]

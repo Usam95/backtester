@@ -4,7 +4,7 @@ from typing import Dict, Any
 import os
 from .model_factory import ModelFactory
 from sklearn.datasets import load_iris
-from .opt_config.models_config import AllModelsConfig
+from .opt_config.models_config import ModelsConfig
 import json
 from sklearn.linear_model import LogisticRegression, LinearRegression
 import warnings
@@ -20,9 +20,7 @@ from sklearn.model_selection import StratifiedKFold
 import joblib
 
 
-
-
-class GridSearchOptimizer:
+class MlOptimizer:
     def __init__(self, x_train, y_train, symbol, task_type="classification", num_folds=3, scoring=None, verbose=True):
         self.x_train = x_train
         self.y_train = y_train
@@ -46,8 +44,13 @@ class GridSearchOptimizer:
             "ExtraTreesClassifier"
         ]
 
-        if model_name in models_with_n_estimators and "n_estimators" in param_grid:
-            param_grid["n_estimators"] = [int(n) for n in param_grid["n_estimators"]]
+        if model_name in models_with_n_estimators:
+            if "n_estimators" in param_grid:
+                param_grid["n_estimators"] = [int(n) for n in param_grid["n_estimators"]]
+
+            # Check and convert max_depth values to int if present in param_grid
+            if "max_depth" in param_grid:
+                param_grid["max_depth"] = [int(d) for d in param_grid["max_depth"]]
 
         if model_name == "KNeighborsClassifier" and "n_neighbors" in param_grid:
             param_grid["n_neighbors"] = [int(n) for n in param_grid["n_neighbors"]]
@@ -105,6 +108,9 @@ class GridSearchOptimizer:
         with open(f'{dir_path}/performance_info.txt', 'w') as file:
             file.write(performance_info)
 
+    def set_data(self, x):
+        self.x_train = x
+
     def run_grid_search(self, model_name: str, model, param_grid: Dict[str, Any], rescale=True):
         print(f"Running Grid Search for {model_name}...")
 
@@ -143,28 +149,33 @@ class GridSearchOptimizer:
 
             # Save the trained model and its performance info
             self._save_model(model_name, grid_result.best_estimator_, performance_info)
+            # Return the best model
+            return grid_result.best_estimator_
+
         except Exception as e:
             print(f"Error during grid search for model {model_name}: {e}")
+            return None
 
+# TEST:
 
-if __name__ == "__main__":
-
-    data = load_iris()
-    print(data.data[:5])  # Print the first 5 rows of data
-    print(data.target[:5])  # Print the first 5 target values
-    X = data.data
-    y = data.target
-
-    print(len(X), len(y))
-    optimizer = GridSearchOptimizer(x_train=X, y_train=y, task_type="classification", scoring='accuracy')
-
-    # Load JSON data from files
-    with open("opt_config/classification_config.json", "r") as file:
-        classification_data = json.load(file)
-    classification_config = AllModelsConfig(**classification_data)
-
-    for model_config in classification_config.models:
-        model_name = model_config.model
-        model_class = ModelFactory.get_model(model_name, task_type="classification")
-        param_grid = model_config.params
-        optimizer.run_grid_search(model_name, model_class(), param_grid)
+# if __name__ == "__main__":
+#
+#     data = load_iris()
+#     print(data.data[:5])  # Print the first 5 rows of data
+#     print(data.target[:5])  # Print the first 5 target values
+#     X = data.data
+#     y = data.target
+#
+#     print(len(X), len(y))
+#     optimizer = GridSearchOptimizer(x_train=X, y_train=y, task_type="classification", scoring='accuracy')
+#
+#     # Load JSON data from files
+#     with open("opt_config/classification_config.json", "r") as file:
+#         classification_data = json.load(file)
+#     classification_config = AllModelsConfig(**classification_data)
+#
+#     for model_config in classification_config.models:
+#         model_name = model_config.model
+#         model_class = ModelFactory.get_model(model_name, task_type="classification")
+#         param_grid = model_config.params
+#         optimizer.run_grid_search(model_name, model_class(), param_grid)

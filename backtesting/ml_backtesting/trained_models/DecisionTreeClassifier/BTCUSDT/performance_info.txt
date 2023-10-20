@@ -1,0 +1,2 @@
+Best Score: 0.5158
+Best Parameters: {'max_depth': 10.0}

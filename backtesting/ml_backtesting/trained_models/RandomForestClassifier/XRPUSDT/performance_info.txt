@@ -1,0 +1,2 @@
+Best Score: 0.6347
+Best Parameters: {'criterion': 'gini', 'max_depth': 5, 'n_estimators': 80}
